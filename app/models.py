@@ -154,11 +154,18 @@ class Presenca(db.Model):
 class Avaliacao(db.Model):
     __tablename__ = "avaliacoes"
 
+    COLUNA_UNID1 = "Unid. 1"
+    COLUNA_UNID2 = "Unid. 2"
+    COLUNA_REC = "Rec."
+    COLUNAS_SIGAA = (COLUNA_UNID1, COLUNA_UNID2, COLUNA_REC)
+
     id = db.Column(db.Integer, primary_key=True)
     disciplina_id = db.Column(db.Integer, db.ForeignKey("disciplinas.id"), nullable=False)
     nome = db.Column(db.String(50), nullable=False)
     peso = db.Column(db.Float, default=1.0, nullable=False)
     ordem = db.Column(db.Integer, default=0, nullable=False)
+    # Coluna fixa do SIGAA na exportação: Unid. 1 | Unid. 2 | Rec.
+    coluna_sigaa = db.Column(db.String(20), nullable=False, default=COLUNA_UNID1)
 
     disciplina = db.relationship("Disciplina", back_populates="avaliacoes")
     notas = db.relationship(

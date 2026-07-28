@@ -7,7 +7,13 @@ def contar_faltas_aluno(aluno: AlunoDisciplina) -> int:
 
 
 def calcular_media_aluno(aluno: AlunoDisciplina, disciplina_id: int) -> float | None:
-    avaliacoes = Avaliacao.query.filter_by(disciplina_id=disciplina_id).order_by(Avaliacao.ordem).all()
+    """Média ponderada das avaliações de unidade (exclui Rec.)."""
+    avaliacoes = (
+        Avaliacao.query.filter_by(disciplina_id=disciplina_id)
+        .filter(Avaliacao.coluna_sigaa != Avaliacao.COLUNA_REC)
+        .order_by(Avaliacao.ordem)
+        .all()
+    )
     if not avaliacoes:
         return None
 

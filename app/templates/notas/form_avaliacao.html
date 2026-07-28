@@ -2,18 +2,29 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-6">
+    <div class="col-lg-7">
         <div class="card shadow-sm">
             <div class="card-header bg-white">
                 <h1 class="h5 mb-0">{{ titulo }}</h1>
             </div>
             <div class="card-body">
+                <p class="text-muted small">
+                    Na exportação para o SIGAA, a nota desta avaliação entra na média
+                    da coluna escolhida (<strong>Unid. 1</strong>, <strong>Unid. 2</strong> ou <strong>Rec.</strong>).
+                    A <strong>Rec.</strong> só entra no <strong>Resultado</strong> se a média das unidades
+                    for menor que 7 (aluno em recuperação).
+                </p>
                 <form method="POST" novalidate>
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.nome.label(class="form-label") }}
-                        {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else ""), placeholder="Ex.: Unid. 1") }}
+                        {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else ""), placeholder="Ex.: Prova 1, Trabalho, Lista 2") }}
                         {% for error in form.nome.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.coluna_sigaa.label(class="form-label") }}
+                        {{ form.coluna_sigaa(class="form-select" + (" is-invalid" if form.coluna_sigaa.errors else "")) }}
+                        {% for error in form.coluna_sigaa.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">

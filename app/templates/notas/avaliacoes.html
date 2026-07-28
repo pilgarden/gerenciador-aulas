@@ -10,6 +10,11 @@
             </ol>
         </nav>
         <h1 class="h3 mb-0">Avaliações</h1>
+        <p class="text-muted small mb-0">
+            Você pode criar várias avaliações no semestre. Na exportação, elas são
+            agregadas nas colunas fixas do SIGAA (Unid. 1, Unid. 2, Rec.).
+            A Rec. só é considerada no Resultado se a média das unidades for &lt; 7.
+        </p>
     </div>
     <a href="{{ url_for('notas.nova_avaliacao', disciplina_id=disciplina.id) }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i> Nova avaliação
@@ -23,6 +28,7 @@
                 <tr>
                     <th>Ordem</th>
                     <th>Nome</th>
+                    <th>Coluna SIGAA</th>
                     <th>Peso</th>
                     <th></th>
                 </tr>
@@ -32,6 +38,7 @@
                 <tr>
                     <td>{{ av.ordem }}</td>
                     <td>{{ av.nome }}</td>
+                    <td><span class="badge bg-secondary">{{ av.coluna_sigaa }}</span></td>
                     <td>{{ av.peso }}</td>
                     <td class="text-end">
                         <a href="{{ url_for('notas.editar_avaliacao', disciplina_id=disciplina.id, avaliacao_id=av.id) }}" class="btn btn-sm btn-outline-primary">Editar</a>
@@ -44,7 +51,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-4">
+                    <td colspan="5" class="text-center text-muted py-4">
                         Nenhuma avaliação cadastrada.
                         <a href="{{ url_for('notas.nova_avaliacao', disciplina_id=disciplina.id) }}">Criar a primeira</a>.
                     </td>

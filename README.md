@@ -36,7 +36,9 @@ Resumo: banco gratuito no **Neon** + app no **Render** (planos free).
 - Semestres, disciplinas e alunos (manual ou importação SIGAA)
 - Chamada de presença por aula (Presente / Ausente / Justificado)
 - Lançamento de notas com média ponderada
-- **Exportação** para planilha `.xls` compatível com reimportação no SIGAA
+- **Exportação** para planilha `.xls` no formato fixo do SIGAA
+  (`Matrícula | Nome | Unid. 1 | Unid. 2 | Rec. | Resultado | Faltas | Sit.`),
+  com médias ponderadas das avaliações reais do semestre
 - **Estatísticas** de frequência e notas por disciplina (gráficos e tabelas)
 
 ## Fluxo típico do semestre

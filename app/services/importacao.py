@@ -1,6 +1,7 @@
 """Aplica resultado da importação SIGAA ao banco de dados."""
 from app.extensions import db
 from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Semestre
+from app.services.sigaa_colunas import detectar_coluna_sigaa
 from app.services.sigaa_import import SigaaImportResult
 
 
@@ -17,13 +18,31 @@ def _get_or_create_semestre(codigo: str) -> Semestre:
 def _sync_avaliacoes(disciplina: Disciplina, colunas: list[str]) -> dict[str, Avaliacao]:
     avaliacoes: dict[str, Avaliacao] = {}
     for ordem, nome in enumerate(colunas):
+        coluna_sigaa = detectar_coluna_sigaa(nome)
         avaliacao = Avaliacao.query.filter_by(disciplina_id=disciplina.id, nome=nome).first()
         if not avaliacao:
-            avaliacao = Avaliacao(disciplina_id=disciplina.id, nome=nome, ordem=ordem)
+            avaliacao = Avaliacao(
+                disciplina_id=disciplina.id,
+                nome=nome,
+                ordem=ordem,
+                coluna_sigaa=coluna_sigaa,
+            )
             db.session.add(avaliacao)
             db.session.flush()
         else:
             avaliacao.ordem = ordem
+            # Mantém mapeamento explícito se já existir; só preenche se vazio/legado
+            if not avaliacao.coluna_sigaa:
+                avaliacao.coluna_sigaa = coluna_sigaa
+            elif nome.strip().lower() in (
+                "unid. 1",
+                "unid. 2",
+                "rec.",
+                "unid 1",
+                "unid 2",
+                "rec",
+            ):
+                avaliacao.coluna_sigaa = coluna_sigaa
         avaliacoes[nome] = avaliacao
     return avaliacoes
 

@@ -113,6 +113,7 @@ def nova_avaliacao(disciplina_id):
             nome=form.nome.data.strip(),
             peso=form.peso.data or 1.0,
             ordem=ordem,
+            coluna_sigaa=form.coluna_sigaa.data,
         )
         db.session.add(avaliacao)
         db.session.commit()
@@ -147,6 +148,7 @@ def editar_avaliacao(disciplina_id, avaliacao_id):
         avaliacao.nome = form.nome.data.strip()
         avaliacao.peso = form.peso.data or 1.0
         avaliacao.ordem = form.ordem.data or 0
+        avaliacao.coluna_sigaa = form.coluna_sigaa.data
         db.session.commit()
         flash("Avaliação atualizada.", "success")
         return redirect(url_for("notas.avaliacoes", disciplina_id=disciplina.id))
