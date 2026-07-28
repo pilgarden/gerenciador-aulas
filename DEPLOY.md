@@ -7,66 +7,105 @@ Guia passo a passo para colocar o **Gerenciador de Aulas** na internet gratuitam
 - Conta no [GitHub](https://github.com)
 - Conta no [Neon](https://neon.tech) (banco PostgreSQL gratuito)
 - Conta no [Render](https://render.com) (hospedagem gratuita)
+- Git instalado ([git-scm.com](https://git-scm.com/download/win)) — feche e reabra o terminal após instalar
 
 ---
 
-## 1. Banco de dados (Neon)
+## Passo 1 — Banco de dados (Neon)
 
-1. Acesse [neon.tech](https://neon.tech) e crie um projeto
-2. Anote a **Connection string** (formato `postgresql://usuario:senha@host/db?sslmode=require`)
-3. O plano free **não expira** — ideal para uso durante o semestre
+1. Acesse [neon.tech](https://neon.tech) → **Sign up** (grátis)
+2. **New Project** → escolha região próxima (ex.: US East)
+3. No painel, copie a **Connection string** (botão **Connect**)
+   - Formato: `postgresql://usuario:senha@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
+4. Guarde em local seguro — será usada no Render
+
+> O plano free do Neon **não expira** e comporta o uso de um semestre inteiro.
 
 ---
 
-## 2. Repositório GitHub
+## Passo 2 — Enviar código para o GitHub
 
-```bash
-cd gerenciador-aulas
-git init
+Abra um **novo** PowerShell na pasta do projeto:
+
+```powershell
+cd C:\Users\Pedro\Desktop\gerenciador-aulas
+
+# Se ainda não commitou:
 git add .
-git commit -m "Gerenciador de aulas — versão inicial"
+git commit -m "Gerenciador de aulas - versao inicial"
 git branch -M main
+```
+
+No GitHub (site):
+
+1. **New repository** → nome: `gerenciador-aulas` → **Create** (sem README)
+2. Copie os comandos que o GitHub mostra, ou:
+
+```powershell
 git remote add origin https://github.com/SEU_USUARIO/gerenciador-aulas.git
 git push -u origin main
 ```
 
+**Alternativa sem terminal:** instale [GitHub Desktop](https://desktop.github.com), adicione a pasta e publique.
+
 ---
 
-## 3. Web Service (Render)
+## Passo 3 — Web Service (Render)
 
-### Opção A — Blueprint (automático)
+### Opção A — Blueprint (recomendada)
 
-1. No Render: **New → Blueprint**
-2. Conecte o repositório GitHub
-3. O arquivo `render.yaml` configura o serviço automaticamente
-4. Quando solicitado, informe a variável `DATABASE_URL` com a connection string do Neon
+1. [render.com](https://render.com) → **Sign up** → conecte o GitHub
+2. **New +** → **Blueprint**
+3. Selecione o repositório `gerenciador-aulas`
+4. O Render detecta o `render.yaml` automaticamente
+5. Quando pedir `DATABASE_URL`, cole a connection string do **Neon**
+6. **Apply** → aguarde o deploy (~3–5 min)
 
 ### Opção B — Manual
 
-1. **New → Web Service** → conecte o repositório
+1. **New +** → **Web Service** → conecte o repositório
 2. Configurações:
-   - **Runtime:** Python 3
-   - **Build Command:** `./build.sh`
-   - **Start Command:** `gunicorn run:app --bind 0.0.0.0:$PORT`
-3. Variáveis de ambiente:
+
+| Campo | Valor |
+|-------|-------|
+| Build Command | `./build.sh` |
+| Start Command | `gunicorn run:app --bind 0.0.0.0:$PORT` |
+
+3. Variáveis de ambiente (**Environment**):
 
 | Variável | Valor |
 |----------|-------|
 | `FLASK_APP` | `run:app` |
 | `FLASK_CONFIG` | `production` |
-| `SECRET_KEY` | string aleatória longa (ex.: output de `python -c "import secrets; print(secrets.token_hex(32))"`) |
+| `SECRET_KEY` | string aleatória longa (veja abaixo) |
 | `DATABASE_URL` | connection string do Neon |
 
-4. Clique em **Create Web Service**
+4. **Create Web Service**
+
+**Gerar SECRET_KEY** (PowerShell):
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 ---
 
-## 4. Primeiro acesso
+## Passo 4 — Primeiro acesso
 
-1. Aguarde o deploy (build roda `flask db upgrade` automaticamente)
-2. Acesse a URL gerada pelo Render (ex.: `https://gerenciador-aulas.onrender.com`)
-3. Na primeira visita, crie a conta **administrador** em `/setup`
-4. Pronto — use normalmente de qualquer computador
+1. Aguarde o deploy terminar (status **Live**)
+2. Acesse a URL gerada, ex.: `https://gerenciador-aulas.onrender.com`
+3. Na **primeira visita**, crie sua conta **administrador** em `/setup`
+4. Pronto — acesse de qualquer computador ou celular
+
+> A primeira visita após 15 min sem uso pode demorar ~1 min (serviço acordando).
+
+---
+
+## Passo 5 — Importar sua turma
+
+1. Login → **Disciplinas** → **Importar SIGAA**
+2. Envie a planilha `.xls` exportada do SIGAA
+3. Confirme → semestre, disciplina e alunos criados automaticamente
 
 ---
 
@@ -74,32 +113,32 @@ git push -u origin main
 
 | Item | Comportamento |
 |------|---------------|
-| Cold start | Após 15 min sem acesso, a 1ª visita demora ~1 min |
-| Horas/mês | 750 h de instância (suficiente para uso pessoal) |
+| Cold start | Após 15 min sem acesso, 1ª visita demora ~1 min |
+| Horas/mês | 750 h (suficiente para uso pessoal) |
 | HTTPS | Incluso automaticamente |
 
-**Dica:** use [UptimeRobot](https://uptimerobot.com) (grátis) para pingar a URL a cada 14 min e evitar cold starts frequentes.
+**Dica:** [UptimeRobot](https://uptimerobot.com) (grátis) pode pingar a URL a cada 14 min para reduzir cold starts.
 
 ---
 
-## Atualizações
+## Atualizações futuras
 
-A cada `git push` na branch principal, o Render redeploya automaticamente e executa as migrações do banco.
-
-```bash
+```powershell
 git add .
-git commit -m "Descrição da alteração"
+git commit -m "Descricao da alteracao"
 git push
 ```
+
+O Render redeploya automaticamente e executa `flask db upgrade`.
 
 ---
 
 ## Solução de problemas
 
-**Erro de conexão com banco:** verifique se `DATABASE_URL` está correta e se o Neon está ativo.
-
-**Build falha em `flask db upgrade`:** confira se `FLASK_APP=run:app` está definida.
-
-**502 Bad Gateway:** o serviço pode estar acordando — aguarde ~1 min e recarregue.
-
-**Sessão expira / CSRF:** em produção, acesse sempre via HTTPS (URL do Render).
+| Problema | Solução |
+|----------|---------|
+| Build falha em `flask db upgrade` | Verifique se `DATABASE_URL` e `FLASK_APP` estão definidas **antes** do deploy |
+| Erro de conexão com banco | Confira a connection string do Neon; use `postgresql://` (não `postgres://`) |
+| 502 Bad Gateway | Serviço acordando — aguarde ~1 min e recarregue |
+| CSRF / sessão | Acesse sempre via HTTPS (URL do Render) |
+| `git` não reconhecido | Reinstale Git e **reabra o terminal** |
