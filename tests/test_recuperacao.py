@@ -1,6 +1,6 @@
 """Testes da regra de recuperação no Resultado SIGAA."""
 from app.models import Avaliacao
-from app.services.sigaa_export import (
+from app.services.sigaa_export_calc import (
     aluno_em_recuperacao,
     calcular_notas_sigaa,
     calcular_resultado,
@@ -35,7 +35,7 @@ def test_calcular_notas_sigaa_rec_so_se_necessario():
     }
     # Sem avaliações reais: usamos médias injetadas via mock das funções
     # Teste direto da regra de exportação da coluna Rec.
-    from app.services import sigaa_export as mod
+    from app.services import sigaa_export_calc as mod
 
     original = mod.media_ponderada_coluna
 

@@ -1,4 +1,4 @@
-"""Testes da exportação SIGAA no formato fixo."""
+"""Testes da exportação SIGAA no formato fixo idêntico ao original."""
 import xlrd
 
 from app.extensions import db
@@ -6,7 +6,7 @@ from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Semestre
 from app.services.sigaa_export import gerar_planilha_sigaa, nome_arquivo_exportacao
 
 
-def test_gerar_planilha_formato_fixo_sigaa(app):
+def test_gerar_planilha_formato_identico_sigaa(app):
     with app.app_context():
         semestre = Semestre(codigo="2026.2", ativo=True)
         db.session.add(semestre)
@@ -30,7 +30,6 @@ def test_gerar_planilha_formato_fixo_sigaa(app):
         db.session.add(aluno)
         db.session.flush()
 
-        # Avaliações internas variadas, mapeadas às colunas SIGAA
         p1 = Avaliacao(
             disciplina_id=disciplina.id,
             nome="Prova 1",
@@ -55,35 +54,41 @@ def test_gerar_planilha_formato_fixo_sigaa(app):
         db.session.add_all([p1, t1, p2])
         db.session.flush()
 
-        # Unid. 1 = (8*2 + 7*1) / 3 = 7.666... → 7.67
         db.session.add(Nota(avaliacao_id=p1.id, aluno_disciplina_id=aluno.id, valor=8.0))
         db.session.add(Nota(avaliacao_id=t1.id, aluno_disciplina_id=aluno.id, valor=7.0))
         db.session.add(Nota(avaliacao_id=p2.id, aluno_disciplina_id=aluno.id, valor=9.0))
         db.session.commit()
 
         conteudo = gerar_planilha_sigaa(disciplina)
-        book = xlrd.open_workbook(file_contents=conteudo)
+        book = xlrd.open_workbook(file_contents=conteudo, formatting_info=True)
         sheet = book.sheet_by_index(0)
 
+        assert book.sheet_names() == ["Sheet0"]
         assert sheet.cell_value(1, 1) == "PLANILHA DE NOTAS"
         assert "DEC10058" in sheet.cell_value(2, 1)
 
-        # Cabeçalho fixo
-        assert sheet.cell_value(10, 1) == "Matrícula"
-        assert sheet.cell_value(10, 2) == "Nome"
-        assert sheet.cell_value(10, 3) == "Unid. 1"
-        assert sheet.cell_value(10, 4) == "Unid. 2"
-        assert sheet.cell_value(10, 5) == "Rec."
-        assert sheet.cell_value(10, 6) == "Resultado"
-        assert sheet.cell_value(10, 7) == "Faltas"
-        assert sheet.cell_value(10, 8) == "Sit."
+        # Cabeçalho na linha 11 (como no original)
+        assert sheet.cell_value(11, 1) == "Matrícula"
+        assert sheet.cell_value(11, 2) == "Nome"
+        assert sheet.cell_value(11, 3) == "Unid. 1"
+        assert sheet.cell_value(11, 4) == "Unid. 2"
+        assert sheet.cell_value(11, 5) == "Rec."
+        assert sheet.cell_value(11, 6) == "Resultado"
+        assert sheet.cell_value(11, 7) == "Faltas"
+        assert sheet.cell_value(11, 8) == "Sit."
 
-        assert sheet.cell_value(11, 1) == "20222006643"
-        assert sheet.cell_value(11, 3) == "7,67"  # média ponderada Unid. 1
-        assert sheet.cell_value(11, 4) == "9"  # Unid. 2
-        assert sheet.cell_value(11, 5) == "-"  # Rec. vazia
-        # Resultado = média de Unid.1 e Unid.2 = (7.67+9)/2 = 8.335 → 8.34
-        assert abs(float(sheet.cell_value(11, 6)) - 8.34) < 0.01
+        # Dados na linha 12
+        assert sheet.cell_value(12, 1) == "20222006643"
+        assert sheet.cell_value(12, 3) == "7,67"
+        assert sheet.cell_value(12, 4) == "9"
+        assert sheet.cell_value(12, 5) == "-"
+        assert abs(float(sheet.cell_value(12, 6)) - 8.34) < 0.01
+        assert sheet.cell_value(12, 7) == 1  # faltas
+
+        # Células mescladas no título (como no original)
+        assert (1, 2, 1, 9) in sheet.merged_cells or any(
+            m[0] == 1 and m[2] == 1 for m in sheet.merged_cells
+        )
 
 
 def test_nome_arquivo_exportacao(app):
@@ -120,6 +125,6 @@ def test_rota_exportar(logged_client, disciplina_com_alunos, app):
 
     book = xlrd.open_workbook(file_contents=resp.data)
     sheet = book.sheet_by_index(0)
-    assert sheet.cell_value(10, 3) == "Unid. 1"
-    assert sheet.cell_value(10, 4) == "Unid. 2"
-    assert sheet.cell_value(10, 5) == "Rec."
+    assert sheet.cell_value(11, 3) == "Unid. 1"
+    assert sheet.cell_value(11, 4) == "Unid. 2"
+    assert sheet.cell_value(11, 5) == "Rec."
