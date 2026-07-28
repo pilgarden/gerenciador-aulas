@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Avaliações{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('notas.lancamento', disciplina_id=disciplina.id) }}">Notas</a></li>
+                <li class="breadcrumb-item active">Avaliações</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">Avaliações</h1>
+    </div>
+    <a href="{{ url_for('notas.nova_avaliacao', disciplina_id=disciplina.id) }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Nova avaliação
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Ordem</th>
+                    <th>Nome</th>
+                    <th>Peso</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for av in avaliacoes %}
+                <tr>
+                    <td>{{ av.ordem }}</td>
+                    <td>{{ av.nome }}</td>
+                    <td>{{ av.peso }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('notas.editar_avaliacao', disciplina_id=disciplina.id, avaliacao_id=av.id) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        <form method="POST" action="{{ url_for('notas.excluir_avaliacao', disciplina_id=disciplina.id, avaliacao_id=av.id) }}" class="d-inline"
+                              onsubmit="return confirm('Excluir esta avaliação e suas notas?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        Nenhuma avaliação cadastrada.
+                        <a href="{{ url_for('notas.nova_avaliacao', disciplina_id=disciplina.id) }}">Criar a primeira</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

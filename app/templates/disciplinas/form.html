@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">{{ titulo }}</h1>
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.semestre_id.label(class="form-label") }}
+                        {{ form.semestre_id(class="form-select" + (" is-invalid" if form.semestre_id.errors else "")) }}
+                        {% for error in form.semestre_id.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.codigo.label(class="form-label") }}
+                            {{ form.codigo(class="form-control" + (" is-invalid" if form.codigo.errors else "")) }}
+                            {% for error in form.codigo.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            {{ form.nome.label(class="form-label") }}
+                            {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else "")) }}
+                            {% for error in form.nome.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.turma.label(class="form-label") }}
+                            {{ form.turma(class="form-control" + (" is-invalid" if form.turma.errors else "")) }}
+                            {% for error in form.turma.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.carga_horaria.label(class="form-label") }}
+                            {{ form.carga_horaria(class="form-control" + (" is-invalid" if form.carga_horaria.errors else "")) }}
+                            {% for error in form.carga_horaria.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.aulas_previstas.label(class="form-label") }}
+                            {{ form.aulas_previstas(class="form-control" + (" is-invalid" if form.aulas_previstas.errors else "")) }}
+                            {% for error in form.aulas_previstas.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('disciplinas.listar') }}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

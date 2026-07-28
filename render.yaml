@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: gerenciador-aulas
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: FLASK_APP
+        value: run:app
+      - key: FLASK_CONFIG
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false

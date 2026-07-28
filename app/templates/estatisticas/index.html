@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Estatísticas — {{ disciplina.codigo }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.listar') }}">Disciplinas</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}">{{ disciplina.codigo }}</a></li>
+                <li class="breadcrumb-item active">Estatísticas</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">Estatísticas</h1>
+        <p class="text-muted mb-0">{{ disciplina.codigo }} — {{ disciplina.nome }}</p>
+    </div>
+</div>
+
+{# Cards resumo #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.total_alunos }}</div>
+                <div class="stat-label">Alunos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">
+                    {% if stats.freq_media_turma is not none %}{{ stats.freq_media_turma }}%{% else %}—{% endif %}
+                </div>
+                <div class="stat-label">Freq. média da turma</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">
+                    {% if stats.media_geral_turma is not none %}{{ "%.2f"|format(stats.media_geral_turma) }}{% else %}—{% endif %}
+                </div>
+                <div class="stat-label">Média geral</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value {% if stats.alunos_abaixo_limite > 0 %}text-danger{% endif %}">
+                    {{ stats.alunos_abaixo_limite }}
+                </div>
+                <div class="stat-label">Abaixo de {{ limite_frequencia|int }}% freq.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    {# Gráfico frequência #}
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h2 class="h6 mb-0">Presença registrada</h2>
+                <small class="text-muted">{{ stats.total_chamadas }} chamada(s) realizada(s)</small>
+            </div>
+            <div class="card-body">
+                {% if stats.total_chamadas > 0 %}
+                <canvas id="chartPresenca" height="200"></canvas>
+                <div class="row text-center mt-3 g-2">
+                    <div class="col-4">
+                        <div class="fw-bold text-success">{{ stats.total_presencas }}</div>
+                        <small class="text-muted">Presentes</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fw-bold text-danger">{{ stats.total_faltas }}</div>
+                        <small class="text-muted">Faltas</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="fw-bold text-warning">{{ stats.total_justificadas }}</div>
+                        <small class="text-muted">Justificadas</small>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">Nenhuma chamada registrada ainda.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Gráfico distribuição notas #}
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h2 class="h6 mb-0">Distribuição das médias</h2>
+            </div>
+            <div class="card-body">
+                {% if stats.distribuicao_notas.values()|sum > 0 %}
+                <canvas id="chartNotas" height="200"></canvas>
+                {% else %}
+                <p class="text-muted mb-0">Nenhuma nota lançada ainda.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Médias por avaliação #}
+{% if stats.avaliacoes_stats %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h2 class="h6 mb-0">Notas por avaliação</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Avaliação</th>
+                    <th class="text-center">Média</th>
+                    <th class="text-center">Mínima</th>
+                    <th class="text-center">Máxima</th>
+                    <th class="text-center">Alunos c/ nota</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for av in stats.avaliacoes_stats %}
+                <tr>
+                    <td>{{ av.avaliacao.nome }}</td>
+                    <td class="text-center">{{ "%.2f"|format(av.media) if av.media is not none else "—" }}</td>
+                    <td class="text-center">{{ "%.2f"|format(av.minima) if av.minima is not none else "—" }}</td>
+                    <td class="text-center">{{ "%.2f"|format(av.maxima) if av.maxima is not none else "—" }}</td>
+                    <td class="text-center">{{ av.quantidade }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{# Tabela frequência por aluno #}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h2 class="h6 mb-0">Frequência por aluno</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th class="text-center">P</th>
+                    <th class="text-center">F</th>
+                    <th class="text-center">J</th>
+                    <th class="text-center">Freq.</th>
+                    <th class="text-center">Freq.+J</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stats.alunos_frequencia %}
+                <tr class="{% if item.abaixo_limite %}table-danger{% endif %}">
+                    <td>{{ item.aluno.nome }}</td>
+                    <td class="text-center text-success">{{ item.presencas }}</td>
+                    <td class="text-center text-danger">{{ item.faltas }}</td>
+                    <td class="text-center text-warning">{{ item.justificadas }}</td>
+                    <td class="text-center fw-semibold">
+                        {% if item.frequencia_pct is not none %}{{ item.frequencia_pct }}%{% else %}—{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if item.frequencia_com_justificativa_pct is not none %}{{ item.frequencia_com_justificativa_pct }}%{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-3">Nenhum aluno cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Ranking de notas #}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h2 class="h6 mb-0">Médias por aluno</h2>
+        {% if stats.media_geral_turma is not none %}
+        <small class="text-muted">Média da turma: {{ "%.2f"|format(stats.media_geral_turma) }}</small>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Aluno</th>
+                    {% for av in stats.avaliacoes_stats %}
+                    <th class="text-center">{{ av.avaliacao.nome }}</th>
+                    {% endfor %}
+                    <th class="text-center">Média</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stats.alunos_notas %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.aluno.nome }}</td>
+                    {% for av in stats.avaliacoes_stats %}
+                    <td class="text-center">
+                        {% set v = item.notas_por_avaliacao[av.avaliacao.id] %}
+                        {{ "%.1f"|format(v) if v is not none else "—" }}
+                    </td>
+                    {% endfor %}
+                    <td class="text-center fw-semibold">
+                        {% if item.media is not none %}
+                        {{ "%.2f"|format(item.media) }}
+                        {% if item.acima_media_turma %}<i class="bi bi-arrow-up-short text-success"></i>
+                        {% elif item.acima_media_turma == false %}<i class="bi bi-arrow-down-short text-danger"></i>
+                        {% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 3 + stats.avaliacoes_stats|length }}" class="text-center text-muted py-3">Nenhum aluno cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if stats.total_chamadas > 0 or stats.distribuicao_notas.values()|sum > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+{% if stats.total_chamadas > 0 %}
+new Chart(document.getElementById('chartPresenca'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Presentes', 'Faltas', 'Justificadas'],
+        datasets: [{
+            data: [{{ stats.total_presencas }}, {{ stats.total_faltas }}, {{ stats.total_justificadas }}],
+            backgroundColor: ['#198754', '#dc3545', '#ffc107'],
+        }]
+    },
+    options: { plugins: { legend: { position: 'bottom' } } }
+});
+{% endif %}
+{% if stats.distribuicao_notas.values()|sum > 0 %}
+new Chart(document.getElementById('chartNotas'), {
+    type: 'bar',
+    data: {
+        labels: {{ stats.distribuicao_notas.keys()|list|tojson }},
+        datasets: [{
+            label: 'Alunos',
+            data: {{ stats.distribuicao_notas.values()|list|tojson }},
+            backgroundColor: '#0d6efd',
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+{% endif %}
+</script>
+{% endif %}
+{% endblock %}

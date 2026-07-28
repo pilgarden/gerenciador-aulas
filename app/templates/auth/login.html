@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div class="auth-card card shadow">
+    <div class="card-body p-4">
+        <div class="text-center mb-4">
+            <i class="bi bi-journal-check display-4 text-primary"></i>
+            <h1 class="h3 mt-2">Gerenciador de Aulas</h1>
+            <p class="text-muted">Notas e presenças</p>
+        </div>
+        <form method="POST" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), type="email", autofocus=true) }}
+                {% for error in form.email.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="mb-4">
+                {{ form.senha.label(class="form-label") }}
+                {{ form.senha(class="form-control" + (" is-invalid" if form.senha.errors else "")) }}
+                {% for error in form.senha.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            </div>
+            {{ form.submit(class="btn btn-primary w-100") }}
+        </form>
+    </div>
+</div>
+{% endblock %}

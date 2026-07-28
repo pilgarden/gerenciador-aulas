@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ disciplina.codigo }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.listar') }}">Disciplinas</a></li>
+                <li class="breadcrumb-item active">{{ disciplina.codigo }}</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-1">{{ disciplina.codigo }} — Turma {{ disciplina.turma }}</h1>
+        <p class="text-muted mb-0">{{ disciplina.nome }}</p>
+        <small class="text-muted">
+            Semestre {{ disciplina.semestre.codigo }}
+            {% if disciplina.carga_horaria %} · {{ disciplina.carga_horaria }}h{% endif %}
+        </small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('presencas.listar', disciplina_id=disciplina.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-calendar-check me-1"></i> Presença
+        </a>
+        <a href="{{ url_for('notas.lancamento', disciplina_id=disciplina.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-table me-1"></i> Notas
+        </a>
+        <a href="{{ url_for('estatisticas.index', disciplina_id=disciplina.id) }}" class="btn btn-outline-info">
+            <i class="bi bi-bar-chart me-1"></i> Estatísticas
+        </a>
+        <a href="{{ url_for('alunos.listar', disciplina_id=disciplina.id) }}" class="btn btn-primary">
+            <i class="bi bi-people me-1"></i> Alunos ({{ total_alunos }})
+        </a>
+        <a href="{{ url_for('alunos.importar', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Importar SIGAA</a>
+        <a href="{{ url_for('disciplinas.exportar', disciplina_id=disciplina.id) }}" class="btn btn-outline-success">
+            <i class="bi bi-download me-1"></i> Exportar SIGAA
+        </a>
+        <a href="{{ url_for('disciplinas.editar', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Editar</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h6 mb-0">Alunos</h2>
+        <a href="{{ url_for('alunos.novo', disciplina_id=disciplina.id) }}" class="btn btn-sm btn-primary">Novo aluno</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Matrícula</th>
+                    <th>Nome</th>
+                    <th>Faltas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for aluno in alunos %}
+                <tr>
+                    <td>{{ aluno.matricula }}</td>
+                    <td>{{ aluno.nome }}</td>
+                    <td>{{ aluno.faltas_sigaa }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center text-muted py-4">
+                        Nenhum aluno cadastrado.
+                        <a href="{{ url_for('alunos.importar', disciplina_id=disciplina.id) }}">Importar do SIGAA</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if total_alunos > 5 %}
+    <div class="card-footer bg-white text-end">
+        <a href="{{ url_for('alunos.listar', disciplina_id=disciplina.id) }}">Ver todos os {{ total_alunos }} alunos</a>
+    </div>
+    {% endif %}
+</div>
+
+<form method="POST" action="{{ url_for('disciplinas.excluir', disciplina_id=disciplina.id) }}" class="mt-4"
+      onsubmit="return confirm('Excluir esta disciplina e todos os alunos?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-danger btn-sm">Excluir disciplina</button>
+</form>
+{% endblock %}

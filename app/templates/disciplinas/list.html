@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Disciplinas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="h3 mb-0">Disciplinas</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('disciplinas.importar') }}" class="btn btn-outline-primary">
+            <i class="bi bi-upload me-1"></i> Importar SIGAA
+        </a>
+        <a href="{{ url_for('disciplinas.novo') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Nova disciplina
+        </a>
+    </div>
+</div>
+
+{% if semestres %}
+<form method="GET" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="semestre_id" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos os semestres</option>
+            {% for s in semestres %}
+            <option value="{{ s.id }}" {% if semestre_id == s.id %}selected{% endif %}>{{ s.codigo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Semestre</th>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Turma</th>
+                    <th>Alunos</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in disciplinas %}
+                <tr>
+                    <td>{{ d.semestre.codigo }}</td>
+                    <td><strong>{{ d.codigo }}</strong></td>
+                    <td>{{ d.nome }}</td>
+                    <td>{{ d.turma }}</td>
+                    <td>{{ d.alunos.count() }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('disciplinas.detalhe', disciplina_id=d.id) }}" class="btn btn-sm btn-outline-secondary">Ver</a>
+                        <a href="{{ url_for('alunos.listar', disciplina_id=d.id) }}" class="btn btn-sm btn-outline-primary">Alunos</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        Nenhuma disciplina cadastrada.
+                        {% if semestres %}
+                        <a href="{{ url_for('disciplinas.importar') }}">Importar do SIGAA</a> ou
+                        <a href="{{ url_for('disciplinas.novo') }}">cadastrar manualmente</a>.
+                        {% else %}
+                        <a href="{{ url_for('semestres.novo') }}">Cadastre um semestre</a> primeiro.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

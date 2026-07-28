@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Aulas — {{ disciplina.codigo }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.listar') }}">Disciplinas</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}">{{ disciplina.codigo }}</a></li>
+                <li class="breadcrumb-item active">Presença</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">Aulas e presença</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('presencas.resumo', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Resumo de faltas</a>
+        <a href="{{ url_for('presencas.nova', disciplina_id=disciplina.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Nova aula
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Nº</th>
+                    <th>Conteúdo</th>
+                    <th>Chamada</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for aula in aulas %}
+                <tr>
+                    <td>{{ aula.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ aula.numero or '—' }}</td>
+                    <td>{{ aula.conteudo or '—' }}</td>
+                    <td>
+                        {% set total = aula.presencas.count() %}
+                        {% if total > 0 %}
+                        <span class="badge bg-success">Registrada</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Pendente</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('presencas.chamada', disciplina_id=disciplina.id, aula_id=aula.id) }}" class="btn btn-sm btn-primary">Chamada</a>
+                        <a href="{{ url_for('presencas.editar', disciplina_id=disciplina.id, aula_id=aula.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                        <form method="POST" action="{{ url_for('presencas.excluir', disciplina_id=disciplina.id, aula_id=aula.id) }}" class="d-inline"
+                              onsubmit="return confirm('Excluir esta aula e suas presenças?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        Nenhuma aula registrada.
+                        <a href="{{ url_for('presencas.nova', disciplina_id=disciplina.id) }}">Criar primeira aula</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

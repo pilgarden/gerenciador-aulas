@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">{{ titulo }}</h1>
+                <small class="text-muted">{{ disciplina.codigo }}</small>
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.data.label(class="form-label") }}
+                            {{ form.data(class="form-control" + (" is-invalid" if form.data.errors else ""), type="date") }}
+                            {% for error in form.data.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.numero.label(class="form-label") }}
+                            {{ form.numero(class="form-control" + (" is-invalid" if form.numero.errors else "")) }}
+                            <div class="form-text">Deixe em branco para numerar automaticamente.</div>
+                            {% for error in form.numero.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        {{ form.conteudo.label(class="form-label") }}
+                        {{ form.conteudo(class="form-control" + (" is-invalid" if form.conteudo.errors else ""), rows=3) }}
+                        {% for error in form.conteudo.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('presencas.listar', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

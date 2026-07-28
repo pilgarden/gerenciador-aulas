@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Notas — {{ disciplina.codigo }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.listar') }}">Disciplinas</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}">{{ disciplina.codigo }}</a></li>
+                <li class="breadcrumb-item active">Notas</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">Lançamento de notas</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('disciplinas.exportar', disciplina_id=disciplina.id) }}" class="btn btn-outline-success">
+            <i class="bi bi-download me-1"></i> Exportar SIGAA
+        </a>
+        <a href="{{ url_for('notas.avaliacoes', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">
+            Gerenciar avaliações
+        </a>
+    </div>
+</div>
+
+{% if not avaliacoes %}
+<div class="alert alert-info">
+    Nenhuma avaliação cadastrada.
+    <a href="{{ url_for('notas.nova_avaliacao', disciplina_id=disciplina.id) }}">Criar avaliação</a>
+    ou importe uma planilha SIGAA.
+</div>
+{% elif not linhas %}
+<div class="alert alert-warning">
+    Cadastre alunos antes de lançar notas.
+    <a href="{{ url_for('alunos.listar', disciplina_id=disciplina.id) }}">Ver alunos</a>.
+</div>
+{% else %}
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0 notas-table">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th class="sticky-col">Matrícula</th>
+                        <th class="sticky-col-2">Nome</th>
+                        {% for av in avaliacoes %}
+                        <th class="text-center" title="Peso: {{ av.peso }}">{{ av.nome }}</th>
+                        {% endfor %}
+                        <th class="text-center">Média</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in linhas %}
+                    <tr>
+                        <td class="sticky-col">{{ linha.aluno.matricula }}</td>
+                        <td class="sticky-col-2">{{ linha.aluno.nome }}</td>
+                        {% for av in avaliacoes %}
+                        <td>
+                            <input type="text" name="nota_{{ linha.aluno.id }}_{{ av.id }}"
+                                   value="{{ linha.notas[av.id] if linha.notas[av.id] is not none else '' }}"
+                                   class="form-control form-control-sm text-center nota-input"
+                                   inputmode="decimal" placeholder="—">
+                        </td>
+                        {% endfor %}
+                        <td class="text-center fw-semibold">
+                            {% if linha.media is not none %}{{ "%.2f"|format(linha.media) }}{% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white">
+            <button type="submit" class="btn btn-primary">Salvar notas</button>
+        </div>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

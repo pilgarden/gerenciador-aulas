@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Início{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-1">Painel</h1>
+        <p class="text-muted mb-0">
+            {% if semestre_ativo %}
+            Semestre ativo: <strong>{{ semestre_ativo.codigo }}</strong>
+            {% else %}
+            Nenhum semestre ativo.
+            <a href="{{ url_for('semestres.novo') }}">Cadastrar semestre</a>
+            {% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('disciplinas.importar') }}" class="btn btn-outline-primary btn-sm">Importar SIGAA</a>
+        <a href="{{ url_for('disciplinas.novo') }}" class="btn btn-primary btn-sm">Nova disciplina</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.semestres }}</div>
+                <div class="stat-label">Semestres</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.disciplinas }}</div>
+                <div class="stat-label">Disciplinas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.alunos }}</div>
+                <div class="stat-label">Alunos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.usuarios }}</div>
+                <div class="stat-label">Usuários ativos</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if disciplinas %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Disciplinas do semestre</h2>
+        <a href="{{ url_for('disciplinas.listar', semestre_id=semestre_ativo.id if semestre_ativo else None) }}">Ver todas</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Turma</th>
+                    <th>Alunos</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in disciplinas %}
+                <tr>
+                    <td>{{ d.codigo }}</td>
+                    <td>{{ d.nome }}</td>
+                    <td>{{ d.turma }}</td>
+                    <td>{{ d.alunos.count() }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('disciplinas.detalhe', disciplina_id=d.id) }}" class="btn btn-sm btn-outline-primary">Abrir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif semestre_ativo %}
+<div class="card shadow-sm">
+    <div class="card-body text-center text-muted py-4">
+        Nenhuma disciplina no semestre {{ semestre_ativo.codigo }}.
+        <a href="{{ url_for('disciplinas.importar') }}">Importar do SIGAA</a>.
+    </div>
+</div>
+{% endif %}
+{% endblock %}

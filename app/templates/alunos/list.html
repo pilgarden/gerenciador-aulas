@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Alunos — {{ disciplina.codigo }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.listar') }}">Disciplinas</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}">{{ disciplina.codigo }}</a></li>
+                <li class="breadcrumb-item active">Alunos</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">Alunos</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('alunos.importar', disciplina_id=disciplina.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-upload me-1"></i> Importar SIGAA
+        </a>
+        <a href="{{ url_for('alunos.novo', disciplina_id=disciplina.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Novo aluno
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Matrícula</th>
+                    <th>Nome</th>
+                    <th>Faltas</th>
+                    <th>Situação</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for aluno in alunos %}
+                <tr>
+                    <td>{{ aluno.matricula }}</td>
+                    <td>{{ aluno.nome }}</td>
+                    <td>{{ aluno.faltas_sigaa }}</td>
+                    <td>{{ aluno.situacao or '—' }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('alunos.editar', disciplina_id=disciplina.id, aluno_id=aluno.id) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        <form method="POST" action="{{ url_for('alunos.excluir', disciplina_id=disciplina.id, aluno_id=aluno.id) }}" class="d-inline"
+                              onsubmit="return confirm('Excluir este aluno?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        Nenhum aluno cadastrado.
+                        <a href="{{ url_for('alunos.importar', disciplina_id=disciplina.id) }}">Importar do SIGAA</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

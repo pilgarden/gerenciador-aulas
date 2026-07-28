@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Importar alunos{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">Importar alunos — {{ disciplina.codigo }}</h1>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    A planilha será analisada e os alunos serão adicionados ou atualizados nesta disciplina.
+                </p>
+                <form method="POST" enctype="multipart/form-data" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-4">
+                        {{ form.arquivo.label(class="form-label") }}
+                        {{ form.arquivo(class="form-control" + (" is-invalid" if form.arquivo.errors else ""), accept=".xls,.xlsx") }}
+                        {% for error in form.arquivo.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                    </div>
+                    {{ form.submit(class="btn btn-primary") }}
+                    <a href="{{ url_for('alunos.listar', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Chamada — {{ aula.data.strftime('%d/%m/%Y') }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('presencas.listar', disciplina_id=disciplina.id) }}">Presença</a></li>
+                <li class="breadcrumb-item active">{{ aula.data.strftime('%d/%m/%Y') }}</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">Chamada — {{ aula.data.strftime('%d/%m/%Y') }}</h1>
+        {% if aula.conteudo %}<p class="text-muted mb-0">{{ aula.conteudo }}</p>{% endif %}
+    </div>
+    <button type="button" class="btn btn-outline-success btn-sm" id="marcarTodosPresentes">Marcar todos presentes</button>
+</div>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Matrícula</th>
+                        <th>Nome</th>
+                        <th class="text-center">Presença</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aluno in alunos %}
+                    {% set status_atual = presencas.get(aluno.id, 'P') %}
+                    <tr>
+                        <td>{{ aluno.matricula }}</td>
+                        <td>{{ aluno.nome }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm w-100 presenca-group" role="group">
+                                {% for codigo, label, cor in status_opcoes %}
+                                <input type="radio" class="btn-check" name="presenca_{{ aluno.id }}"
+                                       id="presenca_{{ aluno.id }}_{{ codigo }}" value="{{ codigo }}"
+                                       {% if status_atual == codigo %}checked{% endif %}>
+                                <label class="btn btn-outline-{{ cor }}" for="presenca_{{ aluno.id }}_{{ codigo }}">{{ label }}</label>
+                                {% endfor %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white">
+            <button type="submit" class="btn btn-primary">Salvar chamada</button>
+            <a href="{{ url_for('presencas.listar', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </div>
+</form>
+
+<script>
+document.getElementById('marcarTodosPresentes').addEventListener('click', function () {
+    document.querySelectorAll('input[value="P"]').forEach(function (el) { el.checked = true; });
+});
+</script>
+{% endblock %}
