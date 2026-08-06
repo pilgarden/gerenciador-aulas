@@ -24,6 +24,8 @@ class Usuario(UserMixin, db.Model):
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     criado_em = db.Column(db.DateTime, default=utcnow, nullable=False)
 
+    disciplinas = db.relationship("Disciplina", back_populates="professor", lazy="dynamic")
+
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
 
@@ -55,6 +57,7 @@ class Disciplina(db.Model):
     __tablename__ = "disciplinas"
 
     id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
     semestre_id = db.Column(db.Integer, db.ForeignKey("semestres.id"), nullable=False)
     codigo = db.Column(db.String(20), nullable=False)
     nome = db.Column(db.String(200), nullable=False)
@@ -62,6 +65,7 @@ class Disciplina(db.Model):
     carga_horaria = db.Column(db.Integer, nullable=True)
     aulas_previstas = db.Column(db.Integer, nullable=True)
 
+    professor = db.relationship("Usuario", back_populates="disciplinas")
     semestre = db.relationship("Semestre", back_populates="disciplinas")
     alunos = db.relationship(
         "AlunoDisciplina", back_populates="disciplina", lazy="dynamic", cascade="all, delete-orphan"
@@ -74,7 +78,13 @@ class Disciplina(db.Model):
     )
 
     __table_args__ = (
-        db.UniqueConstraint("semestre_id", "codigo", "turma", name="uq_disciplina_semestre_codigo_turma"),
+        db.UniqueConstraint(
+            "usuario_id",
+            "semestre_id",
+            "codigo",
+            "turma",
+            name="uq_disciplina_usuario_semestre_codigo_turma",
+        ),
     )
 
     def __repr__(self):

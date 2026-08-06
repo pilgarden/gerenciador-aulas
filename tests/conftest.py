@@ -43,11 +43,17 @@ def logged_client(client):
 
 @pytest.fixture
 def disciplina_com_alunos(app):
+    admin = Usuario.query.filter_by(email="admin@test.com").first()
     semestre = Semestre(codigo="2026.2", ativo=True)
     db.session.add(semestre)
     db.session.flush()
     disciplina = Disciplina(
-        semestre_id=semestre.id, codigo="DEC10058", nome="Teste", turma="01", carga_horaria=60
+        usuario_id=admin.id,
+        semestre_id=semestre.id,
+        codigo="DEC10058",
+        nome="Teste",
+        turma="01",
+        carga_horaria=60,
     )
     db.session.add(disciplina)
     db.session.flush()

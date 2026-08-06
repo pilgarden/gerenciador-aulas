@@ -3,8 +3,9 @@ import json
 from flask import Blueprint, flash, redirect, render_template, session, url_for
 from flask_login import login_required
 
+from app.access import get_disciplina_acessivel
 from app.extensions import db
-from app.models import AlunoDisciplina, Disciplina
+from app.models import AlunoDisciplina
 from app.alunos.forms import AlunoForm
 from app.disciplinas.forms import ImportSigaaForm
 from app.services.importacao import aplicar_importacao_sigaa
@@ -21,11 +22,7 @@ IMPORT_SESSION_KEY = "sigaa_import_preview_disciplina"
 
 
 def _get_disciplina(disciplina_id):
-    disciplina = db.session.get(Disciplina, disciplina_id)
-    if disciplina is None:
-        flash("Disciplina não encontrada.", "danger")
-        return None
-    return disciplina
+    return get_disciplina_acessivel(disciplina_id)
 
 
 @alunos_bp.route("/")

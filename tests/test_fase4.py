@@ -2,16 +2,18 @@
 import xlrd
 
 from app.extensions import db
-from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Semestre
+from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Semestre, Usuario
 from app.services.sigaa_export import gerar_planilha_sigaa, nome_arquivo_exportacao
 
 
 def test_gerar_planilha_formato_identico_sigaa(app):
     with app.app_context():
+        admin = Usuario.query.filter_by(email="admin@test.com").first()
         semestre = Semestre(codigo="2026.2", ativo=True)
         db.session.add(semestre)
         db.session.flush()
         disciplina = Disciplina(
+            usuario_id=admin.id,
             semestre_id=semestre.id,
             codigo="DEC10058",
             nome="Introdução ao MEF",
@@ -93,10 +95,12 @@ def test_gerar_planilha_formato_identico_sigaa(app):
 
 def test_nome_arquivo_exportacao(app):
     with app.app_context():
+        admin = Usuario.query.filter_by(email="admin@test.com").first()
         semestre = Semestre(codigo="2026.2", ativo=True)
         db.session.add(semestre)
         db.session.flush()
         disciplina = Disciplina(
+            usuario_id=admin.id,
             semestre_id=semestre.id,
             codigo="DEC10058",
             nome="Teste",

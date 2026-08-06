@@ -50,6 +50,7 @@ def _sync_avaliacoes(disciplina: Disciplina, colunas: list[str]) -> dict[str, Av
 def aplicar_importacao_sigaa(
     result: SigaaImportResult,
     disciplina_id: int | None = None,
+    usuario_id: int | None = None,
 ) -> tuple[Disciplina, dict[str, int]]:
     semestre = _get_or_create_semestre(result.semestre)
 
@@ -57,14 +58,20 @@ def aplicar_importacao_sigaa(
         disciplina = db.session.get(Disciplina, disciplina_id)
         if disciplina is None:
             raise ValueError("Disciplina não encontrada.")
+        if usuario_id is not None and disciplina.usuario_id != usuario_id:
+            raise ValueError("Sem permissão para importar nesta disciplina.")
     else:
+        if usuario_id is None:
+            raise ValueError("usuario_id é obrigatório para criar disciplina na importação.")
         disciplina = Disciplina.query.filter_by(
+            usuario_id=usuario_id,
             semestre_id=semestre.id,
             codigo=result.codigo,
             turma=result.turma,
         ).first()
         if not disciplina:
             disciplina = Disciplina(
+                usuario_id=usuario_id,
                 semestre_id=semestre.id,
                 codigo=result.codigo,
                 nome=result.nome,

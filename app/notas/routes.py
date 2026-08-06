@@ -1,20 +1,17 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
+from app.access import get_disciplina_acessivel
 from app.extensions import db
-from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota
+from app.models import AlunoDisciplina, Avaliacao, Nota
 from app.notas.forms import AvaliacaoForm
-from app.services.academico import calcular_media_aluno
+from app.services.academico import carregar_notas_map, carregar_notas_objetos, media_ponderada_de_mapas
 
 notas_bp = Blueprint("notas", __name__, url_prefix="/disciplinas/<int:disciplina_id>/notas")
 
 
 def _get_disciplina(disciplina_id):
-    disciplina = db.session.get(Disciplina, disciplina_id)
-    if disciplina is None:
-        flash("Disciplina não encontrada.", "danger")
-        return None
-    return disciplina
+    return get_disciplina_acessivel(disciplina_id)
 
 
 @notas_bp.route("/", methods=["GET", "POST"])
@@ -28,6 +25,10 @@ def lancamento(disciplina_id):
     alunos = disciplina.alunos.order_by(AlunoDisciplina.nome).all()
 
     if request.method == "POST":
+        # Carrega todas as notas existentes em 1 query (em vez de 1 por célula)
+        existentes = carregar_notas_objetos(disciplina.id)
+        novos: list[Nota] = []
+
         for aluno in alunos:
             for avaliacao in avaliacoes:
                 field = f"nota_{aluno.id}_{avaliacao.id}"
@@ -43,37 +44,35 @@ def lancamento(disciplina_id):
                         flash(f"Nota inválida para {aluno.nome} em {avaliacao.nome}.", "danger")
                         return redirect(url_for("notas.lancamento", disciplina_id=disciplina.id))
 
-                nota = Nota.query.filter_by(
-                    avaliacao_id=avaliacao.id,
-                    aluno_disciplina_id=aluno.id,
-                ).first()
+                chave = (aluno.id, avaliacao.id)
+                nota = existentes.get(chave)
                 if nota:
                     nota.valor = valor
                 elif valor is not None:
-                    nota = Nota(
-                        avaliacao_id=avaliacao.id,
-                        aluno_disciplina_id=aluno.id,
-                        valor=valor,
+                    novos.append(
+                        Nota(
+                            avaliacao_id=avaliacao.id,
+                            aluno_disciplina_id=aluno.id,
+                            valor=valor,
+                        )
                     )
-                    db.session.add(nota)
 
+        if novos:
+            db.session.add_all(novos)
         db.session.commit()
         flash("Notas salvas com sucesso.", "success")
         return redirect(url_for("notas.lancamento", disciplina_id=disciplina.id))
 
-    notas_map = {}
-    for nota in Nota.query.join(Avaliacao).filter(Avaliacao.disciplina_id == disciplina.id).all():
-        notas_map[(nota.aluno_disciplina_id, nota.avaliacao_id)] = nota.valor
-
-    linhas = []
-    for aluno in alunos:
-        linhas.append(
-            {
-                "aluno": aluno,
-                "notas": {a.id: notas_map.get((aluno.id, a.id)) for a in avaliacoes},
-                "media": calcular_media_aluno(aluno, disciplina.id),
-            }
-        )
+    # GET: 1 query de notas + médias em memória
+    notas_map = carregar_notas_map(disciplina.id)
+    linhas = [
+        {
+            "aluno": aluno,
+            "notas": {a.id: notas_map.get((aluno.id, a.id)) for a in avaliacoes},
+            "media": media_ponderada_de_mapas(aluno.id, avaliacoes, notas_map),
+        }
+        for aluno in alunos
+    ]
 
     return render_template(
         "notas/lancamento.html",

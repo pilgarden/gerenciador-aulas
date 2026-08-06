@@ -1,23 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Disciplinas{% endblock %}
+{% block title %}Turmas de outros professores{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <h1 class="h3 mb-1">Minhas disciplinas</h1>
-        {% if outras_count %}
-        <p class="text-muted mb-0">
-            <a href="{{ url_for('disciplinas.listar_outras') }}">Turmas de outros professores ({{ outras_count }})</a>
-        </p>
-        {% endif %}
+        <h1 class="h3 mb-1">Turmas de outros professores</h1>
+        <p class="text-muted mb-0">Visão administrativa — disciplinas que não são suas.</p>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('disciplinas.importar') }}" class="btn btn-outline-primary">
-            <i class="bi bi-upload me-1"></i> Importar SIGAA
-        </a>
-        <a href="{{ url_for('disciplinas.novo') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i> Nova disciplina
-        </a>
-    </div>
+    <a href="{{ url_for('disciplinas.listar') }}" class="btn btn-outline-secondary">
+        Minhas disciplinas
+    </a>
 </div>
 
 {% if semestres %}
@@ -38,6 +29,7 @@
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
+                    <th>Professor</th>
                     <th>Semestre</th>
                     <th>Código</th>
                     <th>Nome</th>
@@ -49,6 +41,7 @@
             <tbody>
                 {% for d in disciplinas %}
                 <tr>
+                    <td>{{ d.professor.nome }}</td>
                     <td>{{ d.semestre.codigo }}</td>
                     <td><strong>{{ d.codigo }}</strong></td>
                     <td>{{ d.nome }}</td>
@@ -56,19 +49,12 @@
                     <td>{{ d.alunos.count() }}</td>
                     <td class="text-end">
                         <a href="{{ url_for('disciplinas.detalhe', disciplina_id=d.id) }}" class="btn btn-sm btn-outline-secondary">Ver</a>
-                        <a href="{{ url_for('alunos.listar', disciplina_id=d.id) }}" class="btn btn-sm btn-outline-primary">Alunos</a>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
-                        Nenhuma disciplina cadastrada.
-                        {% if semestres %}
-                        <a href="{{ url_for('disciplinas.importar') }}">Importar do SIGAA</a> ou
-                        <a href="{{ url_for('disciplinas.novo') }}">cadastrar manualmente</a>.
-                        {% else %}
-                        <a href="{{ url_for('semestres.novo') }}">Cadastre um semestre</a> primeiro.
-                        {% endif %}
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Nenhuma turma de outros professores.
                     </td>
                 </tr>
                 {% endfor %}

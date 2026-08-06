@@ -32,13 +32,20 @@ class DisciplinaForm(FlaskForm):
         if not self.semestre_id.choices:
             self.semestre_id.errors.append("Cadastre um semestre antes de criar disciplinas.")
             return False
+        usuario_id = getattr(self, "usuario_id", None)
+        if usuario_id is None:
+            self.codigo.errors.append("Usuário dono da disciplina não definido.")
+            return False
         existing = Disciplina.query.filter_by(
+            usuario_id=usuario_id,
             semestre_id=self.semestre_id.data,
             codigo=self.codigo.data.strip(),
             turma=self.turma.data.strip(),
         ).first()
         if existing and (not hasattr(self, "disciplina_id") or existing.id != self.disciplina_id):
-            self.codigo.errors.append("Já existe uma disciplina com este código e turma neste semestre.")
+            self.codigo.errors.append(
+                "Você já tem uma disciplina com este código e turma neste semestre."
+            )
             return False
         return True
 

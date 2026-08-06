@@ -57,7 +57,7 @@
 {% if disciplinas %}
 <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">Disciplinas do semestre</h2>
+        <h2 class="h5 mb-0">Minhas disciplinas do semestre</h2>
         <a href="{{ url_for('disciplinas.listar', semestre_id=semestre_ativo.id if semestre_ativo else None) }}">Ver todas</a>
     </div>
     <div class="table-responsive">
@@ -90,9 +90,15 @@
 {% elif semestre_ativo %}
 <div class="card shadow-sm">
     <div class="card-body text-center text-muted py-4">
-        Nenhuma disciplina no semestre {{ semestre_ativo.codigo }}.
+        Nenhuma disciplina sua no semestre {{ semestre_ativo.codigo }}.
         <a href="{{ url_for('disciplinas.importar') }}">Importar do SIGAA</a>.
     </div>
 </div>
+{% endif %}
+
+{% if outras_count %}
+<p class="mt-3 mb-0">
+    <a href="{{ url_for('disciplinas.listar_outras') }}">Ver turmas de outros professores ({{ outras_count }})</a>
+</p>
 {% endif %}
 {% endblock %}

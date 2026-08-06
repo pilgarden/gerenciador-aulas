@@ -13,6 +13,7 @@
         <p class="text-muted mb-0">{{ disciplina.nome }}</p>
         <small class="text-muted">
             Semestre {{ disciplina.semestre.codigo }}
+            {% if not eh_propria %} · Professor: {{ disciplina.professor.nome }}{% endif %}
             {% if disciplina.carga_horaria %} · {{ disciplina.carga_horaria }}h{% endif %}
         </small>
     </div>

@@ -1,8 +1,9 @@
-"""Cálculo de estatísticas de frequência e notas."""
+"""Cálculo de estatísticas de frequência e notas (otimizado)."""
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Presenca
-from app.services.academico import calcular_media_aluno, contar_faltas_aluno
+from app.services.academico import media_ponderada_de_mapas
 
 
 LIMITE_FREQUENCIA = 75.0
@@ -44,7 +45,6 @@ class EstatisticasDisciplina:
     total_chamadas: int
     total_avaliacoes: int
 
-    # Frequência — turma
     freq_media_turma: float | None
     freq_com_just_media_turma: float | None
     alunos_abaixo_limite: int
@@ -52,55 +52,12 @@ class EstatisticasDisciplina:
     total_faltas: int
     total_justificadas: int
 
-    # Notas — turma
     media_geral_turma: float | None
     distribuicao_notas: dict[str, int]
     avaliacoes_stats: list[StatsAvaliacao]
 
-    # Por aluno
     alunos_frequencia: list[StatsAlunoFrequencia] = field(default_factory=list)
     alunos_notas: list[StatsAlunoNota] = field(default_factory=list)
-
-
-def _aulas_com_chamada(disciplina: Disciplina) -> int:
-    return sum(1 for aula in disciplina.aulas.all() if aula.presencas.count() > 0)
-
-
-def _stats_frequencia_aluno(aluno: AlunoDisciplina, total_chamadas: int) -> StatsAlunoFrequencia:
-    presencas = aluno.presencas.filter_by(status=Presenca.STATUS_PRESENTE).count()
-    faltas = aluno.presencas.filter_by(status=Presenca.STATUS_AUSENTE).count()
-    justificadas = aluno.presencas.filter_by(status=Presenca.STATUS_JUSTIFICADO).count()
-    registradas = presencas + faltas + justificadas
-    nao_registradas = max(total_chamadas - registradas, 0)
-
-    freq = round(presencas / total_chamadas * 100, 1) if total_chamadas > 0 else None
-    freq_j = (
-        round((presencas + justificadas) / total_chamadas * 100, 1) if total_chamadas > 0 else None
-    )
-
-    return StatsAlunoFrequencia(
-        aluno=aluno,
-        presencas=presencas,
-        faltas=faltas,
-        justificadas=justificadas,
-        nao_registradas=nao_registradas,
-        frequencia_pct=freq,
-        frequencia_com_justificativa_pct=freq_j,
-        abaixo_limite=freq is not None and freq < LIMITE_FREQUENCIA,
-    )
-
-
-def _stats_avaliacao(avaliacao: Avaliacao) -> StatsAvaliacao:
-    valores = [n.valor for n in avaliacao.notas.all() if n.valor is not None]
-    if not valores:
-        return StatsAvaliacao(avaliacao=avaliacao, media=None, minima=None, maxima=None, quantidade=0)
-    return StatsAvaliacao(
-        avaliacao=avaliacao,
-        media=round(sum(valores) / len(valores), 2),
-        minima=min(valores),
-        maxima=max(valores),
-        quantidade=len(valores),
-    )
 
 
 def _distribuicao_notas(medias: list[float]) -> dict[str, int]:
@@ -120,25 +77,81 @@ def _distribuicao_notas(medias: list[float]) -> dict[str, int]:
 def calcular_estatisticas(disciplina: Disciplina) -> EstatisticasDisciplina:
     alunos = disciplina.alunos.order_by(AlunoDisciplina.nome).all()
     avaliacoes = disciplina.avaliacoes.order_by(Avaliacao.ordem).all()
-    total_aulas = disciplina.aulas.count()
-    total_chamadas = _aulas_com_chamada(disciplina)
+    aulas = disciplina.aulas.all()
+    total_aulas = len(aulas)
+    aula_ids = [a.id for a in aulas]
 
-    alunos_freq = [_stats_frequencia_aluno(a, total_chamadas) for a in alunos]
+    # Todas as presenças da disciplina em 1 query
+    contagens: dict[int, dict[str, int]] = defaultdict(lambda: {"P": 0, "A": 0, "J": 0})
+    aulas_com_presenca: set[int] = set()
+    if aula_ids:
+        for p in Presenca.query.filter(Presenca.aula_id.in_(aula_ids)).all():
+            aulas_com_presenca.add(p.aula_id)
+            if p.status in ("P", "A", "J"):
+                contagens[p.aluno_disciplina_id][p.status] += 1
+    total_chamadas = len(aulas_com_presenca)
+
+    alunos_freq = []
+    for aluno in alunos:
+        c = contagens[aluno.id]
+        presencas, faltas, justificadas = c["P"], c["A"], c["J"]
+        registradas = presencas + faltas + justificadas
+        nao_registradas = max(total_chamadas - registradas, 0)
+        freq = round(presencas / total_chamadas * 100, 1) if total_chamadas > 0 else None
+        freq_j = (
+            round((presencas + justificadas) / total_chamadas * 100, 1) if total_chamadas > 0 else None
+        )
+        alunos_freq.append(
+            StatsAlunoFrequencia(
+                aluno=aluno,
+                presencas=presencas,
+                faltas=faltas,
+                justificadas=justificadas,
+                nao_registradas=nao_registradas,
+                frequencia_pct=freq,
+                frequencia_com_justificativa_pct=freq_j,
+                abaixo_limite=freq is not None and freq < LIMITE_FREQUENCIA,
+            )
+        )
 
     freqs = [a.frequencia_pct for a in alunos_freq if a.frequencia_pct is not None]
-    freqs_j = [a.frequencia_com_justificativa_pct for a in alunos_freq if a.frequencia_com_justificativa_pct is not None]
+    freqs_j = [
+        a.frequencia_com_justificativa_pct
+        for a in alunos_freq
+        if a.frequencia_com_justificativa_pct is not None
+    ]
 
-    avaliacoes_stats = [_stats_avaliacao(av) for av in avaliacoes]
+    # Todas as notas em 1 query
+    notas_map: dict[tuple[int, int], float | None] = {}
+    valores_por_avaliacao: dict[int, list[float]] = defaultdict(list)
+    for nota in Nota.query.join(Avaliacao).filter(Avaliacao.disciplina_id == disciplina.id).all():
+        notas_map[(nota.aluno_disciplina_id, nota.avaliacao_id)] = nota.valor
+        if nota.valor is not None:
+            valores_por_avaliacao[nota.avaliacao_id].append(nota.valor)
 
-    medias_alunos: list[tuple[AlunoDisciplina, float | None]] = [
-        (a, calcular_media_aluno(a, disciplina.id)) for a in alunos
+    avaliacoes_stats = []
+    for av in avaliacoes:
+        valores = valores_por_avaliacao.get(av.id, [])
+        if not valores:
+            avaliacoes_stats.append(
+                StatsAvaliacao(avaliacao=av, media=None, minima=None, maxima=None, quantidade=0)
+            )
+        else:
+            avaliacoes_stats.append(
+                StatsAvaliacao(
+                    avaliacao=av,
+                    media=round(sum(valores) / len(valores), 2),
+                    minima=min(valores),
+                    maxima=max(valores),
+                    quantidade=len(valores),
+                )
+            )
+
+    medias_alunos = [
+        (a, media_ponderada_de_mapas(a.id, avaliacoes, notas_map)) for a in alunos
     ]
     medias_validas = [m for _, m in medias_alunos if m is not None]
     media_turma = round(sum(medias_validas) / len(medias_validas), 2) if medias_validas else None
-
-    notas_por_aluno_map: dict[int, dict[int, float | None]] = {}
-    for nota in Nota.query.join(Avaliacao).filter(Avaliacao.disciplina_id == disciplina.id).all():
-        notas_por_aluno_map.setdefault(nota.aluno_disciplina_id, {})[nota.avaliacao_id] = nota.valor
 
     alunos_notas = []
     for aluno, media in medias_alunos:
@@ -149,13 +162,10 @@ def calcular_estatisticas(disciplina: Disciplina) -> EstatisticasDisciplina:
             StatsAlunoNota(
                 aluno=aluno,
                 media=media,
-                notas_por_avaliacao={
-                    av.id: notas_por_aluno_map.get(aluno.id, {}).get(av.id) for av in avaliacoes
-                },
+                notas_por_avaliacao={av.id: notas_map.get((aluno.id, av.id)) for av in avaliacoes},
                 acima_media_turma=acima,
             )
         )
-
     alunos_notas.sort(key=lambda x: (x.media is None, -(x.media or 0)))
 
     return EstatisticasDisciplina(

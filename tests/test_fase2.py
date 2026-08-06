@@ -4,7 +4,7 @@ import io
 import pytest
 
 from app.extensions import db
-from app.models import AlunoDisciplina, Disciplina, Semestre
+from app.models import AlunoDisciplina, Disciplina, Semestre, Usuario
 
 
 def test_criar_semestre_e_disciplina(logged_client):
@@ -25,15 +25,22 @@ def test_criar_semestre_e_disciplina(logged_client):
         follow_redirects=True,
     )
     assert resp.status_code == 200
-    assert Disciplina.query.filter_by(codigo="DEC10058").first() is not None
+    disc = Disciplina.query.filter_by(codigo="DEC10058").first()
+    assert disc is not None
+    assert disc.usuario_id == Usuario.query.filter_by(email="admin@test.com").first().id
 
 
 def test_criar_aluno_manual(logged_client):
+    admin = Usuario.query.filter_by(email="admin@test.com").first()
     semestre = Semestre(codigo="2026.2", ativo=True)
     db.session.add(semestre)
     db.session.flush()
     disciplina = Disciplina(
-        semestre_id=semestre.id, codigo="DEC10058", nome="Teste", turma="01"
+        usuario_id=admin.id,
+        semestre_id=semestre.id,
+        codigo="DEC10058",
+        nome="Teste",
+        turma="01",
     )
     db.session.add(disciplina)
     db.session.commit()

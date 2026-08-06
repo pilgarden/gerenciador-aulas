@@ -1,20 +1,16 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
+from app.access import get_disciplina_acessivel
 from app.extensions import db
-from app.models import AlunoDisciplina, Aula, Disciplina, Presenca
+from app.models import AlunoDisciplina, Aula, Presenca
 from app.presencas.forms import AulaForm
-from app.services.academico import contar_faltas_aluno
 
 presencas_bp = Blueprint("presencas", __name__, url_prefix="/disciplinas/<int:disciplina_id>/aulas")
 
 
 def _get_disciplina(disciplina_id):
-    disciplina = db.session.get(Disciplina, disciplina_id)
-    if disciplina is None:
-        flash("Disciplina não encontrada.", "danger")
-        return None
-    return disciplina
+    return get_disciplina_acessivel(disciplina_id)
 
 
 @presencas_bp.route("/")
@@ -130,6 +126,12 @@ def chamada(disciplina_id, aula_id):
         return redirect(url_for("alunos.listar", disciplina_id=disciplina.id))
 
     if request.method == "POST":
+        existentes = {
+            p.aluno_disciplina_id: p
+            for p in Presenca.query.filter_by(aula_id=aula.id).all()
+        }
+        novas: list[Presenca] = []
+
         for aluno in alunos:
             status = request.form.get(f"presenca_{aluno.id}", Presenca.STATUS_PRESENTE)
             if status not in (
@@ -139,18 +141,21 @@ def chamada(disciplina_id, aula_id):
             ):
                 status = Presenca.STATUS_PRESENTE
 
-            presenca = Presenca.query.filter_by(aula_id=aula.id, aluno_disciplina_id=aluno.id).first()
+            presenca = existentes.get(aluno.id)
             if presenca:
                 presenca.status = status
             else:
-                presenca = Presenca(
-                    aula_id=aula.id,
-                    aluno_disciplina_id=aluno.id,
-                    status=status,
-                    origem=Presenca.STATUS_MANUAL,
+                novas.append(
+                    Presenca(
+                        aula_id=aula.id,
+                        aluno_disciplina_id=aluno.id,
+                        status=status,
+                        origem=Presenca.STATUS_MANUAL,
+                    )
                 )
-                db.session.add(presenca)
 
+        if novas:
+            db.session.add_all(novas)
         db.session.commit()
         flash("Chamada registrada com sucesso.", "success")
         return redirect(url_for("presencas.listar", disciplina_id=disciplina.id))
@@ -178,12 +183,31 @@ def resumo(disciplina_id):
         return redirect(url_for("disciplinas.listar"))
 
     alunos = disciplina.alunos.order_by(AlunoDisciplina.nome).all()
+    aluno_ids = [a.id for a in alunos]
+    total_aulas = disciplina.aulas.count()
+
+    # Uma query com todas as presenças da disciplina
+    contagens = {
+        aid: {"P": 0, "A": 0, "J": 0}
+        for aid in aluno_ids
+    }
+    if aluno_ids:
+        presencas = (
+            Presenca.query.join(Aula)
+            .filter(Aula.disciplina_id == disciplina.id)
+            .filter(Presenca.aluno_disciplina_id.in_(aluno_ids))
+            .all()
+        )
+        for p in presencas:
+            if p.aluno_disciplina_id in contagens and p.status in contagens[p.aluno_disciplina_id]:
+                contagens[p.aluno_disciplina_id][p.status] += 1
+
     resumo_alunos = [
         {
             "aluno": aluno,
-            "faltas": contar_faltas_aluno(aluno),
-            "justificadas": aluno.presencas.filter_by(status=Presenca.STATUS_JUSTIFICADO).count(),
-            "presencas": aluno.presencas.filter_by(status=Presenca.STATUS_PRESENTE).count(),
+            "faltas": contagens[aluno.id]["A"],
+            "justificadas": contagens[aluno.id]["J"],
+            "presencas": contagens[aluno.id]["P"],
         }
         for aluno in alunos
     ]
@@ -192,5 +216,5 @@ def resumo(disciplina_id):
         "presencas/resumo.html",
         disciplina=disciplina,
         resumo_alunos=resumo_alunos,
-        total_aulas=disciplina.aulas.count(),
+        total_aulas=total_aulas,
     )
