@@ -10,6 +10,13 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
+disciplina_colaboradores = db.Table(
+    "disciplina_colaboradores",
+    db.Column("disciplina_id", db.Integer, db.ForeignKey("disciplinas.id"), primary_key=True),
+    db.Column("usuario_id", db.Integer, db.ForeignKey("usuarios.id"), primary_key=True),
+)
+
+
 class Usuario(UserMixin, db.Model):
     __tablename__ = "usuarios"
 
@@ -22,9 +29,19 @@ class Usuario(UserMixin, db.Model):
     nome = db.Column(db.String(120), nullable=False)
     papel = db.Column(db.String(20), nullable=False, default=PAPEL_PROFESSOR)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
+    # Acesso ao cabeçalho pré-formatado Engenharia Civil / UNIR nos PDFs
+    acesso_cabecalho_unir = db.Column(db.Boolean, default=False, nullable=False)
+    # Ex.: "Prof. Dr.", "Prof.", "Profa. Dra."
+    tratamento = db.Column(db.String(40), nullable=False, default="Prof.")
     criado_em = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     disciplinas = db.relationship("Disciplina", back_populates="professor", lazy="dynamic")
+    disciplinas_colaborando = db.relationship(
+        "Disciplina",
+        secondary=disciplina_colaboradores,
+        back_populates="colaboradores",
+        lazy="dynamic",
+    )
 
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
@@ -66,6 +83,12 @@ class Disciplina(db.Model):
     aulas_previstas = db.Column(db.Integer, nullable=True)
 
     professor = db.relationship("Usuario", back_populates="disciplinas")
+    colaboradores = db.relationship(
+        "Usuario",
+        secondary=disciplina_colaboradores,
+        back_populates="disciplinas_colaborando",
+        lazy="selectin",
+    )
     semestre = db.relationship("Semestre", back_populates="disciplinas")
     alunos = db.relationship(
         "AlunoDisciplina", back_populates="disciplina", lazy="dynamic", cascade="all, delete-orphan"
@@ -76,16 +99,27 @@ class Disciplina(db.Model):
     avaliacoes = db.relationship(
         "Avaliacao", back_populates="disciplina", lazy="dynamic", cascade="all, delete-orphan"
     )
+    grupos = db.relationship(
+        "Grupo", back_populates="disciplina", lazy="dynamic", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
-            "usuario_id",
             "semestre_id",
             "codigo",
             "turma",
-            name="uq_disciplina_usuario_semestre_codigo_turma",
+            name="uq_disciplina_semestre_codigo_turma",
         ),
     )
+
+    def tem_acesso(self, usuario: Usuario) -> bool:
+        if usuario is None or not getattr(usuario, "is_authenticated", False):
+            return False
+        if usuario.is_admin:
+            return True
+        if self.usuario_id == usuario.id:
+            return True
+        return any(c.id == usuario.id for c in self.colaboradores)
 
     def __repr__(self):
         return f"<Disciplina {self.codigo} T{self.turma}>"
@@ -107,6 +141,9 @@ class AlunoDisciplina(db.Model):
     )
     notas = db.relationship(
         "Nota", back_populates="aluno", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    membros_grupo = db.relationship(
+        "GrupoMembro", back_populates="aluno", lazy="dynamic", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
@@ -174,12 +211,15 @@ class Avaliacao(db.Model):
     nome = db.Column(db.String(50), nullable=False)
     peso = db.Column(db.Float, default=1.0, nullable=False)
     ordem = db.Column(db.Integer, default=0, nullable=False)
-    # Coluna fixa do SIGAA na exportação: Unid. 1 | Unid. 2 | Rec.
     coluna_sigaa = db.Column(db.String(20), nullable=False, default=COLUNA_UNID1)
+    em_grupo = db.Column(db.Boolean, default=False, nullable=False)
 
     disciplina = db.relationship("Disciplina", back_populates="avaliacoes")
     notas = db.relationship(
         "Nota", back_populates="avaliacao", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    grupos = db.relationship(
+        "Grupo", back_populates="avaliacao", lazy="dynamic", cascade="all, delete-orphan"
     )
 
 
@@ -198,4 +238,39 @@ class Nota(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("avaliacao_id", "aluno_disciplina_id", name="uq_nota_avaliacao_aluno"),
+    )
+
+
+class Grupo(db.Model):
+    """Grupo de alunos: avaliacao_id NULL = padrão da disciplina."""
+
+    __tablename__ = "grupos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    disciplina_id = db.Column(db.Integer, db.ForeignKey("disciplinas.id"), nullable=False)
+    avaliacao_id = db.Column(db.Integer, db.ForeignKey("avaliacoes.id"), nullable=True)
+    nome = db.Column(db.String(80), nullable=False)
+    ordem = db.Column(db.Integer, default=0, nullable=False)
+
+    disciplina = db.relationship("Disciplina", back_populates="grupos")
+    avaliacao = db.relationship("Avaliacao", back_populates="grupos")
+    membros = db.relationship(
+        "GrupoMembro", back_populates="grupo", lazy="selectin", cascade="all, delete-orphan"
+    )
+
+
+class GrupoMembro(db.Model):
+    __tablename__ = "grupo_membros"
+
+    id = db.Column(db.Integer, primary_key=True)
+    grupo_id = db.Column(db.Integer, db.ForeignKey("grupos.id"), nullable=False)
+    aluno_disciplina_id = db.Column(
+        db.Integer, db.ForeignKey("alunos_disciplina.id"), nullable=False
+    )
+
+    grupo = db.relationship("Grupo", back_populates="membros")
+    aluno = db.relationship("AlunoDisciplina", back_populates="membros_grupo")
+
+    __table_args__ = (
+        db.UniqueConstraint("grupo_id", "aluno_disciplina_id", name="uq_grupo_aluno"),
     )

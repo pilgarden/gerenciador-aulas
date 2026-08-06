@@ -30,6 +30,7 @@
                     <th>Nome</th>
                     <th>Coluna SIGAA</th>
                     <th>Peso</th>
+                    <th>Modo</th>
                     <th></th>
                 </tr>
             </thead>
@@ -40,7 +41,11 @@
                     <td>{{ av.nome }}</td>
                     <td><span class="badge bg-secondary">{{ av.coluna_sigaa }}</span></td>
                     <td>{{ av.peso }}</td>
+                    <td>{% if av.em_grupo %}<span class="badge bg-info">Grupo</span>{% else %}Individual{% endif %}</td>
                     <td class="text-end">
+                        {% if av.em_grupo %}
+                        <a href="{{ url_for('notas.grupos_avaliacao', disciplina_id=disciplina.id, avaliacao_id=av.id) }}" class="btn btn-sm btn-outline-secondary">Grupos</a>
+                        {% endif %}
                         <a href="{{ url_for('notas.editar_avaliacao', disciplina_id=disciplina.id, avaliacao_id=av.id) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                         <form method="POST" action="{{ url_for('notas.excluir_avaliacao', disciplina_id=disciplina.id, avaliacao_id=av.id) }}" class="d-inline"
                               onsubmit="return confirm('Excluir esta avaliação e suas notas?')">
@@ -51,7 +56,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">
+                    <td colspan="6" class="text-center text-muted py-4">
                         Nenhuma avaliação cadastrada.
                         <a href="{{ url_for('notas.nova_avaliacao', disciplina_id=disciplina.id) }}">Criar a primeira</a>.
                     </td>

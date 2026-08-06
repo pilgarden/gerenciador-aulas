@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import FloatField, IntegerField, SelectField, StringField, SubmitField
+from wtforms import BooleanField, FloatField, IntegerField, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
 
 from app.models import Avaliacao
@@ -19,6 +19,7 @@ class AvaliacaoForm(FlaskForm):
     )
     peso = FloatField("Peso", validators=[Optional(), NumberRange(min=0.1, max=10)], default=1.0)
     ordem = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0, max=100)])
+    em_grupo = BooleanField("Avaliação em grupo", default=False)
     submit = SubmitField("Salvar")
 
     def validate_nome(self, field):

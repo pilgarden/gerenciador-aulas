@@ -1,6 +1,6 @@
 """Aplica resultado da importação SIGAA ao banco de dados."""
 from app.extensions import db
-from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Semestre
+from app.models import AlunoDisciplina, Avaliacao, Disciplina, Nota, Semestre, Usuario
 from app.services.sigaa_colunas import detectar_coluna_sigaa
 from app.services.sigaa_import import SigaaImportResult
 
@@ -31,7 +31,6 @@ def _sync_avaliacoes(disciplina: Disciplina, colunas: list[str]) -> dict[str, Av
             db.session.flush()
         else:
             avaliacao.ordem = ordem
-            # Mantém mapeamento explícito se já existir; só preenche se vazio/legado
             if not avaliacao.coluna_sigaa:
                 avaliacao.coluna_sigaa = coluna_sigaa
             elif nome.strip().lower() in (
@@ -53,23 +52,31 @@ def aplicar_importacao_sigaa(
     usuario_id: int | None = None,
 ) -> tuple[Disciplina, dict[str, int]]:
     semestre = _get_or_create_semestre(result.semestre)
+    usuario = db.session.get(Usuario, usuario_id) if usuario_id else None
 
     if disciplina_id:
         disciplina = db.session.get(Disciplina, disciplina_id)
         if disciplina is None:
             raise ValueError("Disciplina não encontrada.")
-        if usuario_id is not None and disciplina.usuario_id != usuario_id:
+        if usuario is not None and not disciplina.tem_acesso(usuario):
             raise ValueError("Sem permissão para importar nesta disciplina.")
     else:
         if usuario_id is None:
             raise ValueError("usuario_id é obrigatório para criar disciplina na importação.")
         disciplina = Disciplina.query.filter_by(
-            usuario_id=usuario_id,
             semestre_id=semestre.id,
             codigo=result.codigo,
             turma=result.turma,
         ).first()
-        if not disciplina:
+        if disciplina:
+            if usuario is not None and not disciplina.tem_acesso(usuario):
+                raise ValueError(
+                    f"A disciplina {result.codigo} turma {result.turma} já existe e pertence "
+                    f"a outro professor. Peça ao administrador para compartilhá-la."
+                )
+            disciplina.nome = result.nome
+            disciplina.carga_horaria = result.carga_horaria
+        else:
             disciplina = Disciplina(
                 usuario_id=usuario_id,
                 semestre_id=semestre.id,
@@ -80,9 +87,6 @@ def aplicar_importacao_sigaa(
             )
             db.session.add(disciplina)
             db.session.flush()
-        else:
-            disciplina.nome = result.nome
-            disciplina.carga_horaria = result.carga_horaria
 
     avaliacoes = _sync_avaliacoes(disciplina, result.colunas_notas)
 

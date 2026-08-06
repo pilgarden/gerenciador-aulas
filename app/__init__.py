@@ -39,6 +39,7 @@ def create_app(config_name=None):
     from app.presencas.routes import presencas_bp
     from app.notas.routes import notas_bp
     from app.estatisticas.routes import estatisticas_bp
+    from app.relatorios import relatorios_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -49,6 +50,7 @@ def create_app(config_name=None):
     app.register_blueprint(presencas_bp)
     app.register_blueprint(notas_bp)
     app.register_blueprint(estatisticas_bp)
+    app.register_blueprint(relatorios_bp)
 
     @app.context_processor
     def inject_globals():

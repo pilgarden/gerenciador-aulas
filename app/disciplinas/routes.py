@@ -7,8 +7,8 @@ from flask_login import current_user, login_required
 from app import admin_required
 from app.access import get_disciplina_acessivel, query_disciplinas_de_outros, query_disciplinas_do_usuario
 from app.extensions import db
-from app.models import AlunoDisciplina, Disciplina, Semestre, Usuario
-from app.disciplinas.forms import DisciplinaForm, ImportSigaaForm
+from app.models import AlunoDisciplina, Disciplina, Grupo, Semestre, Usuario
+from app.disciplinas.forms import DisciplinaForm, ImportSigaaForm, ProfessoresDisciplinaForm
 from app.services.importacao import aplicar_importacao_sigaa
 from app.services.sigaa_export import gerar_planilha_sigaa, nome_arquivo_exportacao
 from app.services.sigaa_import import (
@@ -16,6 +16,11 @@ from app.services.sigaa_import import (
     import_result_from_dict,
     import_result_to_dict,
     parse_sigaa_xls,
+)
+from app.services.grupos import (
+    alunos_sem_grupo,
+    listar_grupos_padrao,
+    salvar_divisao_grupos,
 )
 
 disciplinas_bp = Blueprint("disciplinas", __name__, url_prefix="/disciplinas")
@@ -111,6 +116,7 @@ def detalhe(disciplina_id):
     alunos = disciplina.alunos.order_by(AlunoDisciplina.nome).limit(5).all()
     total_alunos = disciplina.alunos.count()
     eh_propria = disciplina.usuario_id == current_user.id
+    eh_colaborador = any(c.id == current_user.id for c in disciplina.colaboradores)
 
     return render_template(
         "disciplinas/detalhe.html",
@@ -118,6 +124,7 @@ def detalhe(disciplina_id):
         alunos=alunos,
         total_alunos=total_alunos,
         eh_propria=eh_propria,
+        eh_colaborador=eh_colaborador,
     )
 
 
@@ -203,7 +210,11 @@ def importar_confirmar():
         return redirect(url_for("disciplinas.importar"))
 
     preview = import_result_from_dict(json.loads(raw))
-    disciplina, stats = aplicar_importacao_sigaa(preview, usuario_id=current_user.id)
+    try:
+        disciplina, stats = aplicar_importacao_sigaa(preview, usuario_id=current_user.id)
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("disciplinas.importar"))
     session.pop(IMPORT_SESSION_KEY, None)
 
     flash(
@@ -212,6 +223,104 @@ def importar_confirmar():
         "success",
     )
     return redirect(url_for("disciplinas.detalhe", disciplina_id=disciplina.id))
+
+
+@disciplinas_bp.route("/<int:disciplina_id>/professores", methods=["GET", "POST"])
+@login_required
+@admin_required
+def professores(disciplina_id):
+    disciplina = get_disciplina_acessivel(disciplina_id)
+    if disciplina is None:
+        return redirect(url_for("disciplinas.listar"))
+
+    form = ProfessoresDisciplinaForm()
+    if request.method == "GET":
+        form.dono_id.data = disciplina.usuario_id
+        form.colaboradores.data = [c.id for c in disciplina.colaboradores]
+
+    if form.validate_on_submit():
+        dono_anterior_id = disciplina.usuario_id
+        novo_dono_id = form.dono_id.data
+        dono = db.session.get(Usuario, novo_dono_id)
+        if dono is None or not dono.ativo:
+            flash("Dono inválido.", "danger")
+            return redirect(url_for("disciplinas.professores", disciplina_id=disciplina.id))
+
+        collab_ids = set(form.colaboradores.data or [])
+        collab_ids.discard(novo_dono_id)
+
+        if (
+            form.manter_dono_anterior_como_colaborador.data
+            and dono_anterior_id != novo_dono_id
+        ):
+            collab_ids.add(dono_anterior_id)
+
+        disciplina.usuario_id = novo_dono_id
+        if collab_ids:
+            disciplina.colaboradores = [
+                u for u in Usuario.query.filter(Usuario.id.in_(collab_ids), Usuario.ativo.is_(True)).all()
+            ]
+        else:
+            disciplina.colaboradores = []
+        db.session.commit()
+        flash("Professores da disciplina atualizados.", "success")
+        return redirect(url_for("disciplinas.detalhe", disciplina_id=disciplina.id))
+
+    return render_template(
+        "disciplinas/professores.html",
+        disciplina=disciplina,
+        form=form,
+    )
+
+
+@disciplinas_bp.route("/<int:disciplina_id>/grupos", methods=["GET", "POST"])
+@login_required
+def grupos_padrao(disciplina_id):
+    disciplina = get_disciplina_acessivel(disciplina_id)
+    if disciplina is None:
+        return redirect(url_for("disciplinas.listar"))
+
+    alunos = disciplina.alunos.order_by(AlunoDisciplina.nome).all()
+
+    if request.method == "POST":
+        acao = request.form.get("acao", "salvar")
+        if acao == "adicionar_grupo":
+            grupos = listar_grupos_padrao(disciplina.id)
+            n = len(grupos) + 1
+            db.session.add(
+                Grupo(
+                    disciplina_id=disciplina.id,
+                    avaliacao_id=None,
+                    nome=f"Grupo {n}",
+                    ordem=n - 1,
+                )
+            )
+            db.session.commit()
+            flash("Grupo adicionado.", "success")
+            return redirect(url_for("disciplinas.grupos_padrao", disciplina_id=disciplina.id))
+
+        nomes = request.form.getlist("grupo_nome")
+        membros_por_indice: list[list[int]] = []
+        for i in range(len(nomes)):
+            raw_ids = request.form.getlist(f"membros_{i}")
+            membros_por_indice.append([int(x) for x in raw_ids if x.isdigit()])
+        salvar_divisao_grupos(disciplina.id, None, nomes, membros_por_indice)
+        flash("Grupos padrão salvos.", "success")
+        return redirect(url_for("disciplinas.grupos_padrao", disciplina_id=disciplina.id))
+
+    grupos = listar_grupos_padrao(disciplina.id)
+    sem_grupo = alunos_sem_grupo(disciplina.id, grupos)
+    return render_template(
+        "disciplinas/grupos.html",
+        disciplina=disciplina,
+        grupos=grupos,
+        alunos=alunos,
+        sem_grupo=sem_grupo,
+        titulo="Grupos padrão da disciplina",
+        subtitulo="Usados como modelo nas avaliações em grupo.",
+        form_action=url_for("disciplinas.grupos_padrao", disciplina_id=disciplina.id),
+        mostrar_recarregar=False,
+    )
 
 
 @disciplinas_bp.route("/<int:disciplina_id>/exportar")

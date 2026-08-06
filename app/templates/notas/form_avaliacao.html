@@ -39,6 +39,11 @@
                             {% for error in form.ordem.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
                         </div>
                     </div>
+                    <div class="form-check mb-3">
+                        {{ form.em_grupo(class="form-check-input") }}
+                        {{ form.em_grupo.label(class="form-check-label") }}
+                        <div class="form-text">Permite lançar uma nota por grupo (replicada aos membros).</div>
+                    </div>
                     <div class="d-flex gap-2">
                         {{ form.submit(class="btn btn-primary") }}
                         <a href="{{ url_for('notas.avaliacoes', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Cancelar</a>

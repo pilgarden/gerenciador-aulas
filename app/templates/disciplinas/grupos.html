@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}">{{ disciplina.codigo }}</a></li>
+                {% if avaliacao %}
+                <li class="breadcrumb-item"><a href="{{ url_for('notas.avaliacoes', disciplina_id=disciplina.id) }}">Avaliações</a></li>
+                {% endif %}
+                <li class="breadcrumb-item active">Grupos</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-1">{{ titulo }}</h1>
+        {% if subtitulo %}<p class="text-muted mb-0">{{ subtitulo }}</p>{% endif %}
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if mostrar_recarregar %}
+        <form method="POST" action="{{ form_action }}"
+              onsubmit="return confirm('Substituir os grupos desta avaliação pelo padrão da disciplina?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="acao" value="recarregar_padrao">
+            <button type="submit" class="btn btn-outline-warning btn-sm">Recarregar do padrão</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ form_action }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="acao" value="adicionar_grupo">
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Novo grupo
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if not alunos %}
+<div class="alert alert-warning">Cadastre alunos antes de formar grupos.</div>
+{% else %}
+<form method="POST" action="{{ form_action }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="acao" value="salvar">
+
+    <div class="row g-3">
+        {% for g in grupos %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <input type="text" name="grupo_nome" value="{{ g.nome }}" class="form-control mb-2" required>
+                    <label class="form-label small text-muted">Membros</label>
+                    <select name="membros_{{ loop.index0 }}" class="form-select" multiple size="8">
+                        {% set membro_ids = g.membros | map(attribute='aluno_disciplina_id') | list %}
+                        {% for a in alunos %}
+                        <option value="{{ a.id }}" {% if a.id in membro_ids %}selected{% endif %}>
+                            {{ a.nome }} ({{ a.matricula }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Ctrl/Cmd para vários. Deixe o nome e remova todos os membros para excluir ao salvar.</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info mb-0">
+                Nenhum grupo ainda. Clique em <strong>Novo grupo</strong> para começar.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if sem_grupo %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-header bg-white">
+            <h2 class="h6 mb-0">Alunos sem grupo ({{ sem_grupo|length }})</h2>
+        </div>
+        <div class="card-body">
+            <ul class="mb-0 small">
+                {% for a in sem_grupo %}
+                <li>{{ a.nome }} — {{ a.matricula }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if grupos %}
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Salvar divisão</button>
+        <a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Voltar</a>
+    </div>
+    {% endif %}
+</form>
+{% endif %}
+{% endblock %}

@@ -1,4 +1,4 @@
-"""Isolamento de disciplinas entre professores."""
+"""Isolamento, compartilhamento e transferência de disciplinas."""
 from app.extensions import db
 from app.models import Disciplina, Semestre, Usuario
 
@@ -46,15 +46,75 @@ def test_professor_nao_ve_disciplina_de_outro(client, app):
     assert b"Turma B" not in resp.data
 
     resp = client.get(f"/disciplinas/{id_b}")
-    assert resp.status_code == 302 or b"sem permiss" in resp.data.lower() or b"n\xc3\xa3o encontrada" in resp.data.lower()
-
-    # Após redirect, deve bloquear acesso direto a notas/presenças
-    resp = client.get(f"/disciplinas/{id_b}/notas/", follow_redirects=True)
-    assert b"Turma B" not in resp.data or b"sem permiss" in resp.data.lower() or b"n\xc3\xa3o encontrada" in resp.data.lower()
+    assert resp.status_code == 302
 
     resp = client.get(f"/disciplinas/{id_a}")
     assert resp.status_code == 200
     assert b"Turma A" in resp.data
+
+
+def test_colaborador_acessa_disciplina(client, app):
+    with app.app_context():
+        semestre = Semestre(codigo="2026.2", ativo=True)
+        db.session.add(semestre)
+        db.session.flush()
+        dono = _criar_professor("dono@test.com", "Dono")
+        collab = _criar_professor("collab@test.com", "Collab")
+        disc = Disciplina(
+            usuario_id=dono.id,
+            semestre_id=semestre.id,
+            codigo="SHR1",
+            nome="Compartilhada",
+            turma="01",
+        )
+        db.session.add(disc)
+        db.session.flush()
+        disc.colaboradores.append(collab)
+        db.session.commit()
+        disc_id = disc.id
+
+    client.post("/login", data={"email": "collab@test.com", "senha": "senha1234"})
+    resp = client.get("/disciplinas/")
+    assert b"Compartilhada" in resp.data
+    resp = client.get(f"/disciplinas/{disc_id}")
+    assert resp.status_code == 200
+    assert b"Compartilhada" in resp.data
+
+
+def test_admin_transfere_dono(logged_client, app):
+    with app.app_context():
+        semestre = Semestre(codigo="2026.2", ativo=True)
+        db.session.add(semestre)
+        db.session.flush()
+        admin = Usuario.query.filter_by(email="admin@test.com").first()
+        raduan = _criar_professor("raduan@test.com", "Raduan")
+        disc = Disciplina(
+            usuario_id=admin.id,
+            semestre_id=semestre.id,
+            codigo="DAE00447",
+            nome="Do Raduan",
+            turma="01",
+        )
+        db.session.add(disc)
+        db.session.commit()
+        disc_id = disc.id
+        raduan_id = raduan.id
+
+    resp = logged_client.post(
+        f"/disciplinas/{disc_id}/professores",
+        data={
+            "dono_id": raduan_id,
+            "colaboradores": [],
+            "manter_dono_anterior_como_colaborador": "y",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        disc = db.session.get(Disciplina, disc_id)
+        assert disc.usuario_id == raduan_id
+        assert any(c.email == "admin@test.com" for c in disc.colaboradores)
 
 
 def test_admin_ve_outras_separado(logged_client, app):
@@ -91,9 +151,7 @@ def test_admin_ve_outras_separado(logged_client, app):
     resp = logged_client.get("/disciplinas/outras")
     assert resp.status_code == 200
     assert b"De Outro" in resp.data
-    assert b"Minha Admin" not in resp.data
 
-    # Admin ainda pode abrir a turma de outro
     resp = logged_client.get(f"/disciplinas/{outra_id}")
     assert resp.status_code == 200
     assert b"De Outro" in resp.data

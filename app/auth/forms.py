@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, PasswordField, SelectField, StringField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, ValidationError
 
 from app.models import Usuario
 
@@ -42,6 +42,15 @@ class UsuarioForm(FlaskForm):
         validators=[DataRequired()],
     )
     ativo = BooleanField("Ativo", default=True)
+    tratamento = StringField(
+        "Tratamento (PDFs)",
+        validators=[Optional(), Length(max=40)],
+        default="Prof.",
+    )
+    acesso_cabecalho_unir = BooleanField(
+        "Liberar cabeçalho pré-formatado UNIR (Engenharia Civil)",
+        default=False,
+    )
     submit = SubmitField("Salvar")
 
     def validate_email(self, field):

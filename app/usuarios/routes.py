@@ -31,6 +31,8 @@ def novo():
                 email=form.email.data.lower().strip(),
                 papel=form.papel.data,
                 ativo=form.ativo.data,
+                tratamento=(form.tratamento.data or "Prof.").strip(),
+                acesso_cabecalho_unir=bool(form.acesso_cabecalho_unir.data),
             )
             usuario.set_senha(form.senha.data)
             db.session.add(usuario)
@@ -63,6 +65,8 @@ def editar(usuario_id):
             usuario.email = form.email.data.lower().strip()
             usuario.papel = form.papel.data
             usuario.ativo = form.ativo.data
+            usuario.tratamento = (form.tratamento.data or "Prof.").strip()
+            usuario.acesso_cabecalho_unir = bool(form.acesso_cabecalho_unir.data)
             if form.senha.data:
                 usuario.set_senha(form.senha.data)
             db.session.commit()

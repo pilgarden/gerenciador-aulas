@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Relatório PDF — {{ disciplina.codigo }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}">{{ disciplina.codigo }}</a></li>
+                <li class="breadcrumb-item active">Relatório PDF</li>
+            </ol>
+        </nav>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">Gerar lista para alunos (PDF)</h1>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Monte uma lista de notas e/ou faltas para enviar aos alunos.
+                    Você pode ocultar parte da matrícula para reduzir exposição de dados.
+                </p>
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.tipo.label(class="form-label") }}
+                            {{ form.tipo(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.cabecalho.label(class="form-label") }}
+                            {{ form.cabecalho(class="form-select") }}
+                            {% if not pode_unir %}
+                            <div class="form-text">O cabeçalho UNIR é liberado pelo administrador no cadastro do docente.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.matricula_modo.label(class="form-label") }}
+                            {{ form.matricula_modo(class="form-select", id="matricula_modo") }}
+                        </div>
+                        <div class="col-md-6 mb-3" id="digitos_wrap">
+                            {{ form.digitos_matricula.label(class="form-label") }}
+                            {{ form.digitos_matricula(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            {{ form.incluir_nome(class="form-check-input") }}
+                            {{ form.incluir_nome.label(class="form-check-label") }}
+                        </div>
+                        <div class="form-check form-check-inline">
+                            {{ form.incluir_media(class="form-check-input") }}
+                            {{ form.incluir_media.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    {% if form.avaliacoes.choices %}
+                    <div class="mb-3">
+                        {{ form.avaliacoes.label(class="form-label") }}
+                        {{ form.avaliacoes(class="form-select", size=6) }}
+                        <div class="form-text">Segure Ctrl/Cmd para selecionar. Vazio = todas.</div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        {{ form.titulo_custom.label(class="form-label") }}
+                        {{ form.titulo_custom(class="form-control", placeholder="Ex.: Notas — Trabalho 1") }}
+                    </div>
+                    <div id="cab_simples" class="border rounded p-3 mb-3 bg-light">
+                        <p class="small text-muted mb-2">Cabeçalho personalizado (usado quando não for o modelo UNIR)</p>
+                        <div class="mb-2">{{ form.linha1(class="form-control form-control-sm", placeholder="Linha 1") }}</div>
+                        <div class="mb-2">{{ form.linha2(class="form-control form-control-sm", placeholder="Linha 2") }}</div>
+                        <div>{{ form.linha3(class="form-control form-control-sm", placeholder="Linha 3") }}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('disciplinas.detalhe', disciplina_id=disciplina.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+  const modo = document.getElementById('matricula_modo');
+  const digitos = document.getElementById('digitos_wrap');
+  const cab = document.querySelector('[name="cabecalho"]');
+  const simples = document.getElementById('cab_simples');
+  function sync() {
+    if (digitos) digitos.style.display = (modo && modo.value === 'parcial') ? '' : 'none';
+    if (simples && cab) simples.style.display = (cab.value === 'unir') ? 'none' : '';
+  }
+  if (modo) modo.addEventListener('change', sync);
+  if (cab) cab.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{% endblock %}
