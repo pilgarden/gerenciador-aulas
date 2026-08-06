@@ -142,6 +142,24 @@ def _styles():
             leading=10,
             alignment=TA_CENTER,
         ),
+        "assinatura": ParagraphStyle(
+            "assinatura",
+            parent=base["Normal"],
+            fontName="Helvetica",
+            fontSize=9,
+            leading=12,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor("#222222"),
+        ),
+        "assinatura_meta": ParagraphStyle(
+            "assinatura_meta",
+            parent=base["Normal"],
+            fontName="Helvetica",
+            fontSize=8,
+            leading=10,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor("#555555"),
+        ),
     }
 
 
@@ -240,27 +258,30 @@ def _montar_cabecalho(
                 continue
             flow.append(Paragraph(linha, styles["inst"] if i == 0 else styles["sub"]))
 
-    # Nome da disciplina (4ª linha do modelo)
     flow.append(
         Paragraph(
-            f"{disciplina.codigo} — {disciplina.nome} (Turma {disciplina.turma}) · "
-            f"Semestre {disciplina.semestre.codigo}",
+            f"{disciplina.codigo} — {disciplina.nome} (Turma {disciplina.turma})",
             styles["disc"],
         )
     )
-
-    tratamento = (professor.tratamento or "Prof.").strip()
-    flow.append(Paragraph(f"{tratamento} {professor.nome}", styles["meta"]))
-    flow.append(Paragraph(professor.email, styles["meta"]))
-    flow.append(
-        Paragraph(
-            f"Relatório gerado em {gerado_em.strftime('%d/%m/%Y')}",
-            styles["meta"],
-        )
-    )
-    flow.append(Spacer(1, 4 * mm))
+    flow.append(Paragraph(f"Semestre {disciplina.semestre.codigo}", styles["meta"]))
+    flow.append(Spacer(1, 3 * mm))
     return flow
 
+
+def _bloco_assinatura(styles, professor: Usuario, gerado_em: date) -> list:
+    tratamento = (professor.tratamento or "Prof.").strip()
+    return [
+        Spacer(1, 18 * mm),
+        Paragraph("_______________________________", styles["assinatura_meta"]),
+        Spacer(1, 2 * mm),
+        Paragraph(f"{tratamento} {professor.nome}", styles["assinatura"]),
+        Paragraph(professor.email, styles["assinatura_meta"]),
+        Paragraph(
+            f"Relatório gerado em {gerado_em.strftime('%d/%m/%Y')}",
+            styles["assinatura_meta"],
+        ),
+    ]
 
 def _fmt_nota(valor: float | None) -> str:
     if valor is None:
@@ -379,6 +400,7 @@ def gerar_pdf_relatorio(
         )
     )
     story.append(table)
+    story.extend(_bloco_assinatura(styles, professor, gerado_em))
 
     def _footer(canvas, doc_):
         canvas.saveState()
@@ -386,7 +408,7 @@ def gerar_pdf_relatorio(
         canvas.setFillColor(colors.HexColor("#666666"))
         canvas.drawCentredString(
             A4[0] / 2,
-            1.0 * cm,
+            0.8 * cm,
             f"Página {doc_.page} — {disciplina.codigo} T{disciplina.turma}",
         )
         canvas.restoreState()
